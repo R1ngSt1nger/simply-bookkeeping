@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+{% block title %}Categories | {{ business_name() }}{% endblock %}
+{% block content %}
+
+<div class="max-w-2xl">
+  <div class="mb-2">
+    <h1 class="font-display text-3xl font-semibold text-ink">Categories</h1>
+  </div>
+
+  <p class="text-sm text-ink/40 mb-1">Click on a category below to display all linked income/expense line items.</p>
+  {% if user.role in ['owner', 'bookkeeper'] %}
+  <p class="text-sm mb-6"><a href="/settings#categories" class="text-ink/50 hover:text-ink">Manage categories in Settings →</a></p>
+  {% else %}
+  <div class="mb-6"></div>
+  {% endif %}
+
+  <form method="get" action="/categories" class="flex items-end gap-3 mb-6">
+    <div>
+      <label class="block text-xs uppercase tracking-wide text-ink/50 mb-1.5"><strong>Filter by type</strong></label>
+      <select name="type" onchange="this.form.submit()" class="border border-line rounded px-3 py-2 bg-white text-ink text-sm">
+        <option value="all" {% if selected_type == 'all' %}selected{% endif %}>All categories</option>
+        <option value="income" {% if selected_type == 'income' %}selected{% endif %}>Income</option>
+        <option value="expense" {% if selected_type == 'expense' %}selected{% endif %}>Expense</option>
+      </select>
+    </div>
+  </form>
+
+  {% if categories %}
+  <div class="bg-papercard border border-line rounded-lg divide-y divide-line">
+    {% for c in categories %}
+    <a href="/categories/{{ c.id }}" class="flex items-center justify-between px-4 py-3 hover:bg-white transition-colors">
+      <span class="text-sm text-ink">{{ c.name }}</span>
+      <span class="text-xs uppercase tracking-wide {% if c.category_type == 'income' %}text-brass{% else %}text-rust{% endif %}">{{ "Income" if c.category_type == "income" else "Expense" }}</span>
+    </a>
+    {% endfor %}
+  </div>
+  {% else %}
+  <div class="bg-papercard border border-dashed border-line rounded-lg px-4 py-12 text-center text-sm text-ink/40">
+    {% if selected_type != 'all' %}No {{ selected_type }} categories yet.{% else %}No categories yet.{% endif %}
+    {% if user.role in ['owner', 'bookkeeper'] %} <a href="/settings#categories" class="text-accent underline">Add one in Settings →</a>{% endif %}
+  </div>
+  {% endif %}
+</div>
+
+{% endblock %}

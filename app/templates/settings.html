@@ -1,0 +1,589 @@
+{% extends "base.html" %}
+{% block title %}Settings | {{ business_name() }}{% endblock %}
+
+{% block extra_head %}
+{% endblock %}
+
+{% block content %}
+
+<div class="max-w-2xl">
+  <h1 class="font-display text-3xl font-semibold text-ink mb-8">Settings</h1>
+
+  {% if error %}
+  <div class="text-sm text-rust bg-rustlight/40 border border-rust/30 rounded px-3 py-2 mb-6">{{ error }}</div>
+  {% endif %}
+  {% if success %}
+  <div class="text-sm text-accent bg-accentlight/40 border border-accent/30 rounded px-3 py-2 mb-6">{{ success }}</div>
+  {% endif %}
+
+  {% if user.role == 'owner' %}
+  <!-- Business Management -->
+  <details class="settings-section bg-papercard border border-line rounded-lg mb-4">
+    <summary class="flex items-center justify-between p-5">
+      <h2 class="font-display text-lg font-semibold text-ink">Business Management</h2>
+      <svg class="chevron shrink-0" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+    </summary>
+    <div class="px-5 pb-5">
+      <p class="text-xs text-ink/40 mb-4">You're currently viewing <strong>{{ active_business.name }}</strong>. Rename it below, if required.</p>
+
+      <form method="post" action="/settings/businesses/{{ active_business.slug }}/rename" class="flex gap-3 mb-5">
+        <input type="text" name="name" value="{{ active_business.name }}" required
+          class="flex-1 border border-line rounded px-3 py-2 bg-white text-ink" />
+        <button type="submit" class="bg-accent text-white text-sm font-medium px-4 py-2 rounded hover:bg-accentdeep transition-colors">Save name</button>
+      </form>
+
+      <div class="border-t border-line pt-4">
+        <p class="text-xs text-ink/40 mb-3">Add, remove, or switch businesses.</p>
+        <p class="text-xs uppercase tracking-wide text-ink/50 mb-2 font-bold">All businesses</p>
+        <div class="divide-y divide-line bg-white border border-line rounded mb-4">
+          {% for b in all_businesses_full %}
+          <div class="flex items-center justify-between px-3 py-2.5">
+            <div class="flex items-center gap-2">
+              {% if b.slug == active_business.slug %}
+              <span class="text-xs uppercase tracking-wide text-accent bg-accentlight/50 px-2 py-0.5 rounded-full">Active</span>
+              {% endif %}
+              <span class="text-sm text-ink">{{ b.name }}</span>
+            </div>
+            <div class="flex items-center gap-3">
+              {% if b.slug != active_business.slug %}
+              <a href="/switch-business/{{ b.slug }}" class="text-xs text-ink/60 hover:text-ink">Switch to this</a>
+              {% endif %}
+              {% if all_businesses_full|length > 1 %}
+              <form method="post" action="/settings/businesses/{{ b.slug }}/delete" id="delete-biz-{{ b.id }}">
+                <input type="hidden" name="confirm_name" class="confirm-name-field" />
+                <button type="button" onclick="openConfirmModal(document.getElementById('delete-biz-{{ b.id }}'), {title: 'Delete ' + {{ b.name | tojson }} + '?', message: 'Type the business name to confirm. This deletes all of its data and cannot be undone.', expectedText: {{ b.name | tojson }}})" class="text-xs text-rust hover:underline">Delete</button>
+              </form>
+              {% endif %}
+            </div>
+          </div>
+          {% endfor %}
+        </div>
+
+        <form method="post" action="/settings/businesses/new" class="flex gap-3">
+          <input type="text" name="name" placeholder="New business name" required
+            class="flex-1 border border-line rounded px-3 py-2 bg-white text-ink text-sm" />
+          <button type="submit" class="border border-accent text-accent text-sm font-medium px-4 py-2 rounded hover:bg-accentlight/30">+ Add business</button>
+        </form>
+      </div>
+    </div>
+  </details>
+  {% endif %}
+
+  <!-- Business Branding and Details -->
+  <details class="settings-section bg-papercard border border-line rounded-lg mb-4" {% if opened == 'branding' %}open{% endif %}>
+    <summary class="flex items-center justify-between p-5">
+      <h2 class="font-display text-lg font-semibold text-ink">Business Branding and Details</h2>
+      <svg class="chevron shrink-0" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+    </summary>
+    <div class="px-5 pb-5">
+      <p class="text-xs text-ink/40 mb-4">Shown on invoices generated for <strong>{{ active_business.name }}</strong>.</p>
+
+      <form method="post" action="/settings/business-details" enctype="multipart/form-data" class="space-y-5">
+
+        <div>
+          <label class="block text-xs uppercase tracking-wide text-ink/50 mb-1.5"><strong>Logo</strong></label>
+          <div class="flex items-center gap-4">
+            {% if active_business.logo_filename %}
+            <img src="/settings/business-logo/{{ active_business.slug }}" alt="Logo" class="h-14 w-14 object-contain border border-line rounded bg-white p-1" />
+            {% else %}
+            <div class="h-14 w-14 border border-dashed border-line rounded flex items-center justify-center text-ink/20 text-xs">None</div>
+            {% endif %}
+            <input type="file" name="logo" accept=".png,.jpg,.jpeg,.svg"
+              class="text-sm file:mr-3 file:py-1.5 file:px-3 file:rounded file:border-0 file:bg-accent file:text-white file:text-xs" />
+          </div>
+          {% if active_business.logo_filename %}
+          <button type="submit" formaction="/settings/business-details/remove-logo" formnovalidate class="text-xs text-rust hover:underline mt-2">Remove logo</button>
+          {% endif %}
+        </div>
+
+        <div>
+          <label class="block text-xs uppercase tracking-wide text-ink/50 mb-1.5"><strong>ABN</strong></label>
+          <input type="text" name="abn" value="{{ active_business.abn or '' }}" class="w-full border border-line rounded px-3 py-2 bg-white text-ink text-sm" />
+        </div>
+
+        <div class="grid grid-cols-2 gap-4">
+          <div>
+            <label class="block text-xs uppercase tracking-wide text-ink/50 mb-1.5"><strong>Phone</strong></label>
+            <input type="text" name="phone" value="{{ active_business.phone or '' }}" class="w-full border border-line rounded px-3 py-2 bg-white text-ink text-sm" />
+          </div>
+          <div>
+            <label class="block text-xs uppercase tracking-wide text-ink/50 mb-1.5"><strong>Email</strong></label>
+            <input type="email" name="email" value="{{ active_business.email or '' }}" class="w-full border border-line rounded px-3 py-2 bg-white text-ink text-sm" />
+          </div>
+        </div>
+
+        <div class="space-y-3">
+          <label class="block text-xs uppercase tracking-wide text-ink/50"><strong>Address</strong></label>
+          <input type="text" name="address_line" value="{{ active_business.address_line or '' }}" placeholder="Street address"
+            class="w-full border border-line rounded px-3 py-2 bg-white text-ink text-sm" />
+          <div class="grid grid-cols-3 gap-3">
+            <input type="text" name="suburb" value="{{ active_business.suburb or '' }}" placeholder="Suburb"
+              class="border border-line rounded px-3 py-2 bg-white text-ink text-sm" />
+            <select name="state" class="border border-line rounded px-3 py-2 bg-white text-ink text-sm">
+              <option value="">State</option>
+              {% for s in ["ACT", "NSW", "NT", "QLD", "SA", "TAS", "VIC", "WA"] %}
+              <option value="{{ s }}" {% if active_business.state == s %}selected{% endif %}>{{ s }}</option>
+              {% endfor %}
+            </select>
+            <input type="text" name="postcode" value="{{ active_business.postcode or '' }}" placeholder="Postcode"
+              class="border border-line rounded px-3 py-2 bg-white text-ink text-sm" />
+          </div>
+        </div>
+
+        <div class="border-t border-line pt-4 space-y-3">
+          <label class="block text-xs uppercase tracking-wide text-ink/50"><strong>Payment details</strong></label>
+          <div class="grid grid-cols-2 gap-4">
+            <div>
+              <label class="block text-xs text-ink/40 mb-1"><strong>BSB</strong></label>
+              <input type="text" name="payment_bsb" value="{{ active_business.payment_bsb or '' }}" class="w-full border border-line rounded px-3 py-2 bg-white text-ink text-sm" />
+            </div>
+            <div>
+              <label class="block text-xs text-ink/40 mb-1"><strong>Account number</strong></label>
+              <input type="text" name="payment_account_number" value="{{ active_business.payment_account_number or '' }}" class="w-full border border-line rounded px-3 py-2 bg-white text-ink text-sm" />
+            </div>
+            <div>
+              <label class="block text-xs text-ink/40 mb-1"><strong>Account name</strong></label>
+              <input type="text" name="payment_account_name" value="{{ active_business.payment_account_name or '' }}" class="w-full border border-line rounded px-3 py-2 bg-white text-ink text-sm" />
+            </div>
+            <div>
+              <label class="block text-xs text-ink/40 mb-1"><strong>PayID</strong></label>
+              <input type="text" name="payment_payid" value="{{ active_business.payment_payid or '' }}" class="w-full border border-line rounded px-3 py-2 bg-white text-ink text-sm" />
+            </div>
+          </div>
+        </div>
+
+        <button type="submit" class="bg-accent text-white text-sm font-medium px-4 py-2 rounded hover:bg-accentdeep transition-colors">Save details</button>
+      </form>
+
+      <div class="border-t border-line mt-6 pt-5">
+        <label class="block text-xs uppercase tracking-wide text-ink/50 mb-1"><strong>Payment methods</strong></label>
+        <p class="text-xs text-ink/40 mb-3">The options offered in the Payments Received/Made list on Income and Expense records.</p>
+
+        <div class="divide-y divide-line bg-white border border-line rounded mb-4">
+          {% for m in payment_methods %}
+          <div class="flex items-center justify-between px-3 py-2.5">
+            <form method="post" action="/settings/payment-methods/{{ m.id }}/rename" class="flex-1 flex items-center gap-3">
+              <input type="text" name="name" value="{{ m.name }}" class="border border-transparent hover:border-line focus:border-line rounded px-2 py-1 bg-transparent focus:bg-papercard text-sm w-full max-w-[200px]" />
+              <button type="submit" class="text-xs text-ink/40 hover:text-ink">Save</button>
+            </form>
+            <form method="post" action="/settings/payment-methods/{{ m.id }}/delete" id="delete-paymethod-{{ m.id }}">
+              <button type="button" onclick="openConfirmModal(document.getElementById('delete-paymethod-{{ m.id }}'), {title: 'Delete ' + {{ m.name | tojson }} + '?', message: 'Existing payments already using this method keep showing it — only new payments lose it as an option.'})" class="text-xs text-rust hover:underline shrink-0">Delete</button>
+            </form>
+          </div>
+          {% else %}
+          <div class="px-3 py-4 text-center text-sm text-ink/40">No payment methods yet.</div>
+          {% endfor %}
+        </div>
+
+        <form method="post" action="/settings/payment-methods/new" class="flex gap-3">
+          <input type="text" name="name" placeholder="e.g. Gift Voucher, PayPal" required
+            class="flex-1 border border-line rounded px-3 py-2 bg-white text-ink text-sm" />
+          <button type="submit" class="border border-accent text-accent text-sm font-medium px-4 py-2 rounded hover:bg-accentlight/30">+ Add method</button>
+        </form>
+      </div>
+    </div>
+  </details>
+
+  <!-- Category Management -->
+  <details id="categories" class="settings-section bg-papercard border border-line rounded-lg mb-4" {% if opened == 'categories' %}open{% endif %}>
+    <summary class="flex items-center justify-between p-5">
+      <h2 class="font-display text-lg font-semibold text-ink">Category Management</h2>
+      <svg class="chevron shrink-0" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+    </summary>
+    <div class="px-5 pb-5">
+      <p class="text-xs text-ink/40 mb-4">Categories used by Income and Expense line items for <strong>{{ active_business.name }}</strong>.</p>
+
+      <form method="get" action="/settings" class="mb-4">
+        <input type="hidden" name="category_type" id="category-type-hidden" value="{{ selected_category_type }}" />
+        <select onchange="document.getElementById('category-type-hidden').value=this.value; this.form.submit();" class="border border-line rounded px-3 py-2 bg-white text-ink text-sm">
+          <option value="all" {% if selected_category_type == 'all' %}selected{% endif %}>All categories</option>
+          <option value="income" {% if selected_category_type == 'income' %}selected{% endif %}>Income</option>
+          <option value="expense" {% if selected_category_type == 'expense' %}selected{% endif %}>Expense</option>
+        </select>
+      </form>
+
+      <form method="post" action="/settings/categories/new" class="flex flex-wrap items-end gap-3 mb-5 bg-white border border-line rounded p-3">
+        <div class="flex-1 min-w-[160px]">
+          <label class="block text-xs uppercase tracking-wide text-ink/50 mb-1.5"><strong>Category name</strong> <span class="text-rust">*</span></label>
+          <input type="text" name="name" required placeholder="e.g. Cleaning costs"
+            class="w-full border border-line rounded px-3 py-2 bg-white text-ink text-sm" />
+        </div>
+        <div>
+          <label class="block text-xs uppercase tracking-wide text-ink/50 mb-1.5"><strong>Type</strong></label>
+          <div class="flex gap-4 pt-2">
+            <label class="flex items-center gap-2 text-sm">
+              <input type="radio" name="category_type" value="expense" checked />
+              Expense
+            </label>
+            <label class="flex items-center gap-2 text-sm">
+              <input type="radio" name="category_type" value="income" />
+              Income
+            </label>
+          </div>
+        </div>
+        <button type="submit" class="bg-accent text-white text-sm font-medium px-4 py-2 rounded hover:bg-accentdeep transition-colors">Add</button>
+      </form>
+
+      {% if categories %}
+      <div class="divide-y divide-line bg-white border border-line rounded">
+        {% for c in categories %}
+        <div class="flex items-center justify-between px-3 py-2.5">
+          <form method="post" action="/settings/categories/{{ c.id }}/rename" class="flex-1 flex items-center gap-3 flex-wrap">
+            <input type="text" name="name" value="{{ c.name }}" class="border border-transparent hover:border-line focus:border-line rounded px-2 py-1 bg-transparent focus:bg-papercard text-sm w-full max-w-[180px]" />
+            <div class="flex gap-3">
+              <label class="flex items-center gap-1.5 text-xs">
+                <input type="radio" name="category_type" value="expense" {% if c.category_type == 'expense' %}checked{% endif %} />
+                Expense
+              </label>
+              <label class="flex items-center gap-1.5 text-xs">
+                <input type="radio" name="category_type" value="income" {% if c.category_type == 'income' %}checked{% endif %} />
+                Income
+              </label>
+            </div>
+            <button type="submit" class="text-xs text-ink/40 hover:text-ink">Save</button>
+          </form>
+          <form method="post" action="/settings/categories/{{ c.id }}/delete" id="delete-cat-{{ c.id }}">
+            <button type="button" onclick="openConfirmModal(document.getElementById('delete-cat-{{ c.id }}'), {title: 'Delete ' + {{ c.name | tojson }} + '?', message: 'Line items using this category will become uncategorised.'})" class="text-xs text-rust hover:underline shrink-0">Delete</button>
+          </form>
+        </div>
+        {% endfor %}
+      </div>
+      {% else %}
+      <div class="bg-white border border-dashed border-line rounded px-4 py-8 text-center text-sm text-ink/40">
+        No categories yet.
+      </div>
+      {% endif %}
+    </div>
+  </details>
+
+  {% if user.role == 'owner' %}
+  <!-- Manage Logins -->
+  <details class="settings-section bg-papercard border border-line rounded-lg mb-4" {% if opened == 'logins' %}open{% endif %}>
+    <summary class="flex items-center justify-between p-5">
+      <h2 class="font-display text-lg font-semibold text-ink">Manage Logins</h2>
+      <svg class="chevron shrink-0" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+    </summary>
+    <div class="px-5 pb-5">
+      <p class="text-xs text-ink/40 mb-4">Add a login for another owner, bookkeeper, or accountant. Bookkeepers and accountants only see the businesses you grant them access to.</p>
+
+      <div class="divide-y divide-line bg-white border border-line rounded mb-5">
+        {% for u in logins %}
+        <div class="px-3 py-3">
+          <div class="flex items-center justify-between mb-1">
+            <div class="flex items-center gap-2">
+              <span class="text-sm font-medium text-ink">{{ u.display_name or u.username }}</span>
+              <span class="text-xs text-ink/40">({{ u.username }})</span>
+              {% if u.id == user.id %}
+              <span class="text-xs uppercase tracking-wide {% if u.role == 'owner' %}text-accent{% else %}text-ink/40{% endif %}">{{ u.role }}</span>
+              {% else %}
+              <form method="post" action="/profile/users/{{ u.id }}/role" class="flex items-center gap-1.5">
+                <select name="role" class="text-xs border border-line rounded px-1.5 py-0.5 bg-white text-ink">
+                  <option value="owner" {% if u.role == 'owner' %}selected{% endif %}>owner</option>
+                  <option value="bookkeeper" {% if u.role == 'bookkeeper' %}selected{% endif %}>bookkeeper</option>
+                  <option value="accountant" {% if u.role == 'accountant' %}selected{% endif %}>accountant</option>
+                </select>
+                <button type="submit" class="text-xs text-accent hover:underline">Save</button>
+              </form>
+              {% endif %}
+            </div>
+            <div class="flex items-center gap-3">
+              <button type="button" onclick="openResetPasswordModal({{ u.id }}, {{ (u.display_name or u.username) | tojson }})" class="text-xs text-ink/50 hover:text-ink">Reset password</button>
+              {% if u.id != user.id %}
+              <form method="post" action="/profile/users/{{ u.id }}/delete" id="delete-login-{{ u.id }}">
+                <button type="button" onclick="openConfirmModal(document.getElementById('delete-login-{{ u.id }}'), {title: 'Remove this login?', message: 'Removes the login for ' + {{ (u.display_name or u.username) | tojson }} + '.'})" class="text-xs text-rust hover:underline">Remove</button>
+              </form>
+              {% else %}
+              <span class="text-xs text-ink/30">You</span>
+              {% endif %}
+            </div>
+          </div>
+          {% if u.role in ('bookkeeper', 'accountant') %}
+          <form method="post" action="/profile/users/{{ u.id }}/access" class="flex flex-wrap items-center gap-3 mt-2">
+            {% for b in all_businesses_full %}
+            <label class="text-xs flex items-center gap-1.5 text-ink/70">
+              <input type="checkbox" name="business_ids" value="{{ b.id }}" {% if b.id in user_access_map.get(u.id, []) %}checked{% endif %} />
+              {{ b.name }}
+            </label>
+            {% endfor %}
+            <button type="submit" class="text-xs text-accent hover:underline">Save access</button>
+          </form>
+          {% endif %}
+        </div>
+        {% endfor %}
+      </div>
+
+      <form method="post" action="/profile/users/new" class="border-t border-line pt-4 space-y-3">
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block text-xs uppercase tracking-wide text-ink/50 mb-1.5"><strong>Username</strong> <span class="text-rust">*</span></label>
+            <input type="text" name="username" required class="w-full border border-line rounded px-3 py-2 bg-white text-ink" />
+          </div>
+          <div>
+            <label class="block text-xs uppercase tracking-wide text-ink/50 mb-1.5"><strong>Password</strong> <span class="text-rust">*</span></label>
+            <input type="text" name="password" required class="w-full border border-line rounded px-3 py-2 bg-white text-ink" />
+          </div>
+        </div>
+        <div>
+          <label class="block text-xs uppercase tracking-wide text-ink/50 mb-1.5"><strong>Access level</strong></label>
+          <div class="flex gap-4 flex-wrap">
+            <label class="flex items-center gap-2 text-sm">
+              <input type="radio" name="role" value="accountant" checked onchange="toggleNewLoginAccess()" />
+              Accountant (read-only)
+            </label>
+            <label class="flex items-center gap-2 text-sm">
+              <input type="radio" name="role" value="bookkeeper" onchange="toggleNewLoginAccess()" />
+              Bookkeeper (read/write)
+            </label>
+            <label class="flex items-center gap-2 text-sm">
+              <input type="radio" name="role" value="owner" onchange="toggleNewLoginAccess()" />
+              Owner (full access)
+            </label>
+          </div>
+        </div>
+        <div id="new-login-access">
+          <label class="block text-xs uppercase tracking-wide text-ink/50 mb-1.5"><strong>Business access</strong></label>
+          <div class="flex flex-wrap gap-3">
+            {% for b in all_businesses_full %}
+            <label class="text-xs flex items-center gap-1.5 text-ink/70">
+              <input type="checkbox" name="business_ids" value="{{ b.id }}" checked />
+              {{ b.name }}
+            </label>
+            {% endfor %}
+          </div>
+        </div>
+        <button type="submit" class="bg-accent text-white text-sm font-medium px-4 py-2 rounded hover:bg-accentdeep transition-colors">Add login</button>
+      </form>
+    </div>
+  </details>
+
+  <!-- Backup and Restore -->
+  <details class="settings-section bg-papercard border border-line rounded-lg mb-4">
+    <summary class="flex items-center justify-between p-5">
+      <h2 class="font-display text-lg font-semibold text-ink">Backup and Restore</h2>
+      <svg class="chevron shrink-0" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+    </summary>
+    <div class="px-5 pb-5">
+      <p class="text-xs text-ink/40 mb-4">Export a full backup — every business, login, and setting — as a ZIP file, or restore from one.</p>
+
+      <div class="mb-4">
+        <a href="/settings/backup/export" class="inline-block bg-accent text-white text-sm font-medium px-4 py-2.5 rounded hover:bg-accentdeep transition-colors">Export backup</a>
+      </div>
+
+      <form method="post" action="/settings/backup/import" enctype="multipart/form-data" id="import-form" class="flex flex-wrap items-center gap-3">
+        <input type="file" name="file" accept=".zip" required
+          class="text-sm file:mr-3 file:py-2 file:px-3 file:rounded file:border-0 file:bg-white file:border file:border-ink file:text-ink file:text-xs" />
+        <button type="button" onclick="openConfirmModal(document.getElementById('import-form'), {title: 'Restore from backup?', message: 'This will overwrite ALL current data with the contents of this backup file. This can\'t be undone.', confirmLabel: 'Import & restore'})" class="border border-rust text-rust text-sm font-medium px-4 py-2 rounded hover:bg-rustlight/20">Import &amp; restore</button>
+      </form>
+    </div>
+  </details>
+
+  <!-- Single Sign-On (OIDC) -->
+  <details class="settings-section bg-papercard border border-line rounded-lg">
+    <summary class="flex items-center justify-between p-5">
+      <div class="flex items-center gap-2">
+        <h2 class="font-display text-lg font-semibold text-ink">Single Sign-On (OIDC)</h2>
+        {% if settings.oidc_enabled %}
+        <span class="text-xs uppercase tracking-wide text-accent bg-accentlight/40 px-2.5 py-1 rounded-full">Enabled</span>
+        {% else %}
+        <span class="text-xs uppercase tracking-wide text-ink/40 bg-white border border-line px-2.5 py-1 rounded-full">Disabled</span>
+        {% endif %}
+      </div>
+      <svg class="chevron shrink-0" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+    </summary>
+    <div class="px-5 pb-5">
+      <div class="bg-white border border-line rounded px-3 py-2.5 mb-5">
+        <p class="text-xs uppercase tracking-wide text-ink/40 mb-1"><strong>Redirect URI</strong> — enter this in your provider</p>
+        <p class="num text-sm text-ink break-all">{{ redirect_uri }}</p>
+      </div>
+
+      <form method="post" action="/settings/oidc" class="space-y-4">
+        <label class="flex items-center gap-2 text-sm">
+          <input type="checkbox" name="oidc_enabled" {% if settings.oidc_enabled %}checked{% endif %} class="rounded border-line" />
+          Enable single sign-on
+        </label>
+
+        <div>
+          <label class="block text-xs uppercase tracking-wide text-ink/50 mb-1.5"><strong>Provider URL (issuer)</strong></label>
+          <input type="text" name="oidc_issuer" value="{{ settings.oidc_issuer or '' }}" placeholder="https://pocketid.example.com"
+            class="w-full border border-line rounded px-3 py-2 bg-white text-ink text-sm" />
+          <p class="text-xs text-ink/30 mt-1">The app looks up <span class="num">/.well-known/openid-configuration</span> under this URL.</p>
+        </div>
+
+        <div class="grid grid-cols-2 gap-4">
+          <div>
+            <label class="block text-xs uppercase tracking-wide text-ink/50 mb-1.5"><strong>Client ID</strong></label>
+            <input type="text" name="oidc_client_id" value="{{ settings.oidc_client_id or '' }}"
+              class="w-full border border-line rounded px-3 py-2 bg-white text-ink text-sm" />
+          </div>
+          <div>
+            <label class="block text-xs uppercase tracking-wide text-ink/50 mb-1.5"><strong>Client secret</strong></label>
+            <input type="password" name="oidc_client_secret"
+              placeholder="{% if settings.oidc_client_secret %}•••••••• (leave blank to keep){% else %}Not set{% endif %}"
+              class="w-full border border-line rounded px-3 py-2 bg-white text-ink text-sm" />
+          </div>
+        </div>
+
+        <div>
+          <label class="block text-xs uppercase tracking-wide text-ink/50 mb-1.5"><strong>Button text</strong></label>
+          <input type="text" name="oidc_button_text" value="{{ settings.oidc_button_text or '' }}" placeholder="Sign in with SSO"
+            class="w-full border border-line rounded px-3 py-2 bg-white text-ink text-sm" />
+        </div>
+
+        <label class="flex items-center gap-2 text-sm">
+          <input type="checkbox" name="oidc_auto_create_users" {% if settings.oidc_auto_create_users %}checked{% endif %} class="rounded border-line" />
+          Automatically create a new read-only login for people signing in via SSO who don't already have one
+        </label>
+
+        <div class="flex gap-3 pt-2">
+          <button type="submit" class="bg-accent text-white text-sm font-medium px-5 py-2.5 rounded hover:bg-accentdeep transition-colors">Save SSO settings</button>
+          {% if settings.oidc_enabled %}
+          <button type="submit" formaction="/settings/oidc/disable" class="text-sm text-rust hover:underline px-2 py-2.5">Disable SSO</button>
+          {% endif %}
+        </div>
+      </form>
+    </div>
+  </details>
+
+  <!-- SMTP Server Details -->
+  <details class="settings-section bg-papercard border border-line rounded-lg mt-4">
+    <summary class="flex items-center justify-between p-5">
+      <div class="flex items-center gap-2">
+        <h2 class="font-display text-lg font-semibold text-ink">SMTP Server Details</h2>
+        {% if settings.smtp_enabled %}
+        <span class="text-xs uppercase tracking-wide text-accent bg-accentlight/40 px-2.5 py-1 rounded-full">Enabled</span>
+        {% else %}
+        <span class="text-xs uppercase tracking-wide text-ink/40 bg-white border border-line px-2.5 py-1 rounded-full">Disabled</span>
+        {% endif %}
+      </div>
+      <svg class="chevron shrink-0" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+    </summary>
+    <div class="px-5 pb-5">
+      <form method="post" action="/settings/smtp" class="space-y-4">
+        <label class="flex items-center gap-2 text-sm">
+          <input type="checkbox" name="smtp_enabled" {% if settings.smtp_enabled %}checked{% endif %} class="rounded border-line" />
+          Enable SMTP email
+        </label>
+
+        <div class="grid grid-cols-3 gap-4">
+          <div class="col-span-2">
+            <label class="block text-xs uppercase tracking-wide text-ink/50 mb-1.5"><strong>SMTP host</strong></label>
+            <input type="text" name="smtp_host" value="{{ settings.smtp_host or '' }}" placeholder="smtp.example.com"
+              class="w-full border border-line rounded px-3 py-2 bg-white text-ink text-sm" />
+          </div>
+          <div>
+            <label class="block text-xs uppercase tracking-wide text-ink/50 mb-1.5"><strong>Port</strong></label>
+            <input type="text" name="smtp_port" value="{{ settings.smtp_port or '' }}" placeholder="587"
+              class="w-full border border-line rounded px-3 py-2 bg-white text-ink text-sm" />
+          </div>
+        </div>
+
+        <div>
+          <label class="block text-xs uppercase tracking-wide text-ink/50 mb-1.5"><strong>Encryption</strong></label>
+          <select name="smtp_encryption" class="border border-line rounded px-3 py-2 bg-white text-ink text-sm">
+            <option value="starttls" {% if (settings.smtp_encryption or 'starttls') == 'starttls' %}selected{% endif %}>STARTTLS (usually port 587)</option>
+            <option value="ssl" {% if settings.smtp_encryption == 'ssl' %}selected{% endif %}>SSL/TLS (usually port 465)</option>
+            <option value="none" {% if settings.smtp_encryption == 'none' %}selected{% endif %}>None</option>
+          </select>
+        </div>
+
+        <div class="grid grid-cols-2 gap-4">
+          <div>
+            <label class="block text-xs uppercase tracking-wide text-ink/50 mb-1.5"><strong>SMTP username</strong></label>
+            <input type="text" name="smtp_username" value="{{ settings.smtp_username or '' }}"
+              class="w-full border border-line rounded px-3 py-2 bg-white text-ink text-sm" />
+          </div>
+          <div>
+            <label class="block text-xs uppercase tracking-wide text-ink/50 mb-1.5"><strong>SMTP password</strong></label>
+            <input type="password" name="smtp_password"
+              placeholder="{% if settings.smtp_password %}•••••••• (leave blank to keep){% else %}Not set{% endif %}"
+              class="w-full border border-line rounded px-3 py-2 bg-white text-ink text-sm" />
+          </div>
+        </div>
+
+        <div class="grid grid-cols-2 gap-4">
+          <div>
+            <label class="block text-xs uppercase tracking-wide text-ink/50 mb-1.5"><strong>From email</strong></label>
+            <input type="email" name="smtp_from_email" value="{{ settings.smtp_from_email or '' }}" placeholder="noreply@example.com"
+              class="w-full border border-line rounded px-3 py-2 bg-white text-ink text-sm" />
+          </div>
+          <div>
+            <label class="block text-xs uppercase tracking-wide text-ink/50 mb-1.5"><strong>From name</strong></label>
+            <input type="text" name="smtp_from_name" value="{{ settings.smtp_from_name or '' }}" placeholder="Simply Bookkeeping"
+              class="w-full border border-line rounded px-3 py-2 bg-white text-ink text-sm" />
+          </div>
+        </div>
+
+        <div class="flex gap-3 pt-2">
+          <button type="submit" class="bg-accent text-white text-sm font-medium px-5 py-2.5 rounded hover:bg-accentdeep transition-colors">Save SMTP settings</button>
+          {% if settings.smtp_enabled %}
+          <button type="submit" formaction="/settings/smtp/test" class="border border-accent text-accent text-sm font-medium px-4 py-2.5 rounded hover:bg-accentlight/30">Send test email</button>
+          <button type="submit" formaction="/settings/smtp/disable" class="text-sm text-rust hover:underline px-2 py-2.5">Disable SMTP</button>
+          {% endif %}
+        </div>
+      </form>
+    </div>
+  </details>
+  {% endif %}
+</div>
+
+<!-- Reset password modal (owner resetting another login's password) -->
+<div id="reset-pw-backdrop" class="hidden fixed inset-0 bg-ink/40 z-50 flex items-center justify-center p-4">
+  <div class="bg-white rounded-lg shadow-xl max-w-sm w-full p-6">
+    <h3 class="font-display text-lg font-semibold text-ink mb-1">Reset password</h3>
+    <p id="reset-pw-username" class="text-sm text-ink/60 mb-4"></p>
+    <div id="reset-pw-error" class="hidden text-xs text-rust bg-rustlight/30 border border-rust/30 rounded px-3 py-2 mb-3"></div>
+    <div class="space-y-3">
+      <input type="password" id="reset-pw-new" placeholder="New password" class="w-full border border-line rounded px-3 py-2 text-sm" autocomplete="new-password" />
+      <input type="password" id="reset-pw-confirm" placeholder="Confirm new password" class="w-full border border-line rounded px-3 py-2 text-sm" autocomplete="new-password" />
+    </div>
+    <div class="flex justify-end gap-3 mt-5">
+      <button type="button" onclick="closeResetPasswordModal()" class="text-sm text-ink/60 hover:text-ink px-3 py-2">Cancel</button>
+      <button type="button" onclick="submitResetPassword()" class="text-sm text-white px-4 py-2 rounded bg-accent hover:bg-accentdeep transition-colors">Set password</button>
+    </div>
+  </div>
+</div>
+<form id="reset-pw-form" method="post" style="display:none">
+  <input type="hidden" name="new_password" id="reset-pw-hidden-new" />
+</form>
+
+<script>
+  function toggleNewLoginAccess() {
+    const isOwner = document.querySelector('input[name="role"][value="owner"]').checked;
+    document.getElementById('new-login-access').style.display = isOwner ? 'none' : '';
+  }
+  toggleNewLoginAccess();
+
+  let _resetPwUserId = null;
+  function openResetPasswordModal(userId, label) {
+    _resetPwUserId = userId;
+    document.getElementById('reset-pw-username').textContent = 'For ' + label;
+    document.getElementById('reset-pw-new').value = '';
+    document.getElementById('reset-pw-confirm').value = '';
+    document.getElementById('reset-pw-error').classList.add('hidden');
+    document.getElementById('reset-pw-backdrop').classList.remove('hidden');
+  }
+  function closeResetPasswordModal() {
+    document.getElementById('reset-pw-backdrop').classList.add('hidden');
+  }
+  function submitResetPassword() {
+    const pw = document.getElementById('reset-pw-new').value;
+    const confirmPw = document.getElementById('reset-pw-confirm').value;
+    const err = document.getElementById('reset-pw-error');
+    if (!pw) {
+      err.textContent = 'Enter a new password.';
+      err.classList.remove('hidden');
+      return;
+    }
+    if (pw !== confirmPw) {
+      err.textContent = "Passwords don't match.";
+      err.classList.remove('hidden');
+      return;
+    }
+    const form = document.getElementById('reset-pw-form');
+    form.action = '/profile/users/' + _resetPwUserId + '/reset-password';
+    document.getElementById('reset-pw-hidden-new').value = pw;
+    form.submit();
+  }
+</script>
+
+{% endblock %}

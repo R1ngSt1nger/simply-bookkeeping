@@ -1,0 +1,80 @@
+{% extends "base.html" %}
+{% block title %}{{ category.name }} | {{ business_name() }}{% endblock %}
+{% block content %}
+
+<a href="/categories" class="text-sm text-ink/50 hover:text-ink">← Back to Categories</a>
+
+<div class="flex items-end justify-between mt-3 mb-6">
+  <div>
+    <p class="text-xs uppercase tracking-wide mb-1 {% if category.category_type == 'income' %}text-brass{% else %}text-rust{% endif %}">{{ "Income category" if category.category_type == "income" else "Expense category" }}</p>
+    <h1 class="font-display text-3xl font-semibold text-ink">{{ category.name }}</h1>
+  </div>
+  <div class="text-right">
+    <p class="text-xs uppercase tracking-wide text-ink/40 mb-1">Total</p>
+    <p class="num text-2xl font-semibold {% if category.category_type == 'income' %}text-brass{% else %}text-rust{% endif %}">{{ total | money }}</p>
+  </div>
+</div>
+
+<form method="get" action="/categories/{{ category.id }}" class="flex flex-wrap items-end gap-3 mb-6 bg-papercard border border-line rounded-lg p-4">
+  <div>
+    <label class="block text-xs uppercase tracking-wide text-ink/50 mb-1.5"><strong>Date range</strong></label>
+    <select name="range" id="range-select" onchange="toggleCustomRange()" class="border border-line rounded px-3 py-2 bg-white text-ink text-sm">
+      {% for key, label in range_labels.items() %}
+      <option value="{{ key }}" {% if selected_range == key %}selected{% endif %}>{{ label }}</option>
+      {% endfor %}
+    </select>
+  </div>
+  <div id="custom-range-fields" class="flex items-end gap-3 {% if selected_range != 'custom' %}hidden{% endif %}">
+    <div>
+      <label class="block text-xs uppercase tracking-wide text-ink/50 mb-1.5"><strong>From</strong></label>
+      <input type="date" name="custom_start" value="{{ custom_start }}" class="border border-line rounded px-3 py-2 bg-white text-ink text-sm" />
+    </div>
+    <div>
+      <label class="block text-xs uppercase tracking-wide text-ink/50 mb-1.5"><strong>To</strong></label>
+      <input type="date" name="custom_end" value="{{ custom_end }}" class="border border-line rounded px-3 py-2 bg-white text-ink text-sm" />
+    </div>
+  </div>
+  <button type="submit" class="border border-accent text-accent text-sm font-medium px-4 py-2 rounded hover:bg-accentlight/30">Apply</button>
+</form>
+
+{% if rows %}
+<div class="bg-papercard border border-line rounded-lg overflow-hidden">
+  <table class="w-full text-sm">
+    <thead>
+      <tr class="border-b border-line text-left text-xs uppercase tracking-wide text-ink/40">
+        <th class="px-5 py-3 font-medium">Date</th>
+        <th class="px-5 py-3 font-medium">Type</th>
+        <th class="px-5 py-3 font-medium">Contact</th>
+        <th class="px-5 py-3 font-medium">Reference</th>
+        <th class="px-5 py-3 font-medium">Description</th>
+        <th class="px-5 py-3 font-medium text-right">Amount</th>
+      </tr>
+    </thead>
+    <tbody class="divide-y divide-line">
+      {% for row in rows %}
+      <tr class="hover:bg-white transition-colors cursor-pointer" onclick="window.location='{{ row.url }}'">
+        <td class="px-5 py-3 whitespace-nowrap">{{ row.date.strftime('%d %b %Y') }}</td>
+        <td class="px-5 py-3 text-ink/50">{{ row.record_type }}</td>
+        <td class="px-5 py-3">{{ row.contact or "—" }}</td>
+        <td class="px-5 py-3">{{ row.reference or "—" }}</td>
+        <td class="px-5 py-3">{{ row.description }}</td>
+        <td class="px-5 py-3 text-right num font-medium {% if category.category_type == 'income' %}text-brass{% else %}text-rust{% endif %}">{{ row.amount | money }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% else %}
+<div class="bg-papercard border border-dashed border-line rounded-lg px-4 py-16 text-center text-sm text-ink/40">
+  No records in this category {% if selected_range and selected_range != 'all' %}for this date range{% else %}yet{% endif %}.
+</div>
+{% endif %}
+
+<script>
+  function toggleCustomRange() {
+    const select = document.getElementById('range-select');
+    document.getElementById('custom-range-fields').classList.toggle('hidden', select.value !== 'custom');
+  }
+</script>
+
+{% endblock %}

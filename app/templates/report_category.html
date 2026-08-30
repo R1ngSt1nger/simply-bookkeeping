@@ -1,0 +1,52 @@
+{% extends "base.html" %}
+{% block title %}{{ category.name }} | {{ business_name() }}{% endblock %}
+{% block content %}
+
+<a href="/reports?start={{ start }}&end={{ end }}" class="text-sm text-ink/50 hover:text-ink">← Back to Profit &amp; loss</a>
+
+<div class="flex items-end justify-between mt-3 mb-8">
+  <div>
+    <p class="text-xs uppercase tracking-wide mb-1 {% if category.category_type == 'income' %}text-brass{% else %}text-rust{% endif %}">{{ "Income category" if category.category_type == "income" else "Expense category" }}</p>
+    <h1 class="font-display text-3xl font-semibold text-ink">{{ category.name }}</h1>
+    <p class="text-sm text-ink/50 mt-1">{{ start }} to {{ end }}</p>
+  </div>
+  <div class="text-right">
+    <p class="text-xs uppercase tracking-wide text-ink/40 mb-1">Total</p>
+    <p class="num text-2xl font-semibold {% if category.category_type == 'income' %}text-brass{% else %}text-rust{% endif %}">{{ total | money }}</p>
+  </div>
+</div>
+
+{% if rows %}
+<div class="bg-papercard border border-line rounded-lg overflow-hidden">
+  <table class="w-full text-sm">
+    <thead>
+      <tr class="border-b border-line text-left text-xs uppercase tracking-wide text-ink/40">
+        <th class="px-5 py-3 font-medium">Date</th>
+        <th class="px-5 py-3 font-medium">Type</th>
+        <th class="px-5 py-3 font-medium">Contact</th>
+        <th class="px-5 py-3 font-medium">Reference</th>
+        <th class="px-5 py-3 font-medium">Description</th>
+        <th class="px-5 py-3 font-medium text-right">Amount</th>
+      </tr>
+    </thead>
+    <tbody class="divide-y divide-line">
+      {% for row in rows %}
+      <tr class="hover:bg-white transition-colors cursor-pointer" onclick="window.location='{{ row.url }}'">
+        <td class="px-5 py-3 whitespace-nowrap">{{ row.date.strftime('%d %b %Y') }}</td>
+        <td class="px-5 py-3 text-ink/50">{{ row.record_type }}</td>
+        <td class="px-5 py-3">{{ row.contact or "—" }}</td>
+        <td class="px-5 py-3">{{ row.reference or "—" }}</td>
+        <td class="px-5 py-3">{{ row.description }}</td>
+        <td class="px-5 py-3 text-right num font-medium {% if category.category_type == 'income' %}text-brass{% else %}text-rust{% endif %}">{{ row.amount | money }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% else %}
+<div class="bg-papercard border border-dashed border-line rounded-lg px-4 py-16 text-center text-sm text-ink/40">
+  No records in this category for the selected period.
+</div>
+{% endif %}
+
+{% endblock %}

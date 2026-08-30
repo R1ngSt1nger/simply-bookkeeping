@@ -1,0 +1,108 @@
+{% extends "base.html" %}
+{% block title %}{{ contact.display_name }} | {{ business_name() }}{% endblock %}
+{% block content %}
+
+<div class="flex items-start justify-between mb-8">
+  <div>
+    <p class="text-xs uppercase tracking-wide mb-1 {% if contact.contact_type == 'customer' %}text-brass{% else %}text-rust{% endif %}">{{ contact.contact_type }} · {{ contact.designation }}</p>
+    <h1 class="font-display text-3xl font-semibold text-ink">{{ contact.display_name }}</h1>
+  </div>
+  {% if user.role in ['owner', 'bookkeeper'] %}
+  <a href="/contacts/{{ contact.id }}/edit" class="border border-accent text-accent text-sm font-medium px-4 py-2.5 rounded hover:bg-accentlight/30 transition-colors">Edit contact</a>
+  {% endif %}
+</div>
+
+<div class="grid grid-cols-3 gap-8 mb-10">
+  <div class="col-span-1 space-y-4">
+    <div class="bg-papercard border border-line rounded-lg p-5">
+      <h2 class="font-display text-sm font-semibold text-ink mb-3">Details</h2>
+      <dl class="space-y-2 text-sm">
+        {% if contact.designation == 'company' and contact.contact_person %}
+        <div><dt class="text-xs text-ink/40">Contact person</dt><dd class="text-ink">{{ contact.contact_person }}</dd></div>
+        {% endif %}
+        {% if contact.designation == 'company' and contact.website %}
+        <div><dt class="text-xs text-ink/40">Website</dt><dd class="text-ink">{{ contact.website }}</dd></div>
+        {% endif %}
+        {% if contact.email %}
+        <div><dt class="text-xs text-ink/40">Email</dt><dd class="text-ink">{{ contact.email }}</dd></div>
+        {% endif %}
+        {% if contact.phone %}
+        <div><dt class="text-xs text-ink/40">Phone</dt><dd class="text-ink">{{ contact.phone }}</dd></div>
+        {% endif %}
+        {% if contact.street_address or contact.suburb or contact.state or contact.postcode %}
+        <div>
+          <dt class="text-xs text-ink/40">Address</dt>
+          <dd class="text-ink">
+            {% if contact.street_address %}{{ contact.street_address }}<br>{% endif %}
+            {{ [contact.suburb, contact.state, contact.postcode] | select | join(' ') }}
+          </dd>
+        </div>
+        {% endif %}
+        {% if not contact.email and not contact.phone and not contact.street_address and not (contact.designation == 'company' and (contact.contact_person or contact.website)) %}
+        <p class="text-ink/30">No contact details recorded.</p>
+        {% endif %}
+      </dl>
+    </div>
+
+    {% if contact.notes %}
+    <div class="bg-papercard border border-line rounded-lg p-5">
+      <h2 class="font-display text-sm font-semibold text-ink mb-2">Notes</h2>
+      <p class="text-sm text-ink/70 whitespace-pre-line">{{ contact.notes }}</p>
+    </div>
+    {% endif %}
+  </div>
+
+  <div class="col-span-2 space-y-8">
+    {% if contact.contact_type == 'customer' %}
+    <div>
+      <h2 class="font-display text-lg font-semibold text-ink mb-3">Income records</h2>
+      {% if income_records %}
+      <div class="bg-papercard border border-line rounded-lg divide-y divide-line">
+        {% for t in income_records %}
+        <a href="/income/{{ t.id }}/edit" class="flex items-center justify-between px-4 py-3 hover:bg-white transition-colors">
+          <div>
+            {% if t.reference %}
+            <p class="text-sm font-medium text-ink">{{ t.reference }}</p>
+            <p class="text-xs text-ink/40">{{ t.date.strftime('%d %b %Y') }}</p>
+            {% else %}
+            <p class="text-sm font-medium text-ink">{{ t.date.strftime('%d %b %Y') }}</p>
+            {% endif %}
+          </div>
+          <p class="num text-sm font-semibold text-brass">{{ t.total | money }}</p>
+        </a>
+        {% endfor %}
+      </div>
+      {% else %}
+      <div class="bg-papercard border border-dashed border-line rounded-lg px-4 py-8 text-center text-sm text-ink/40">
+        No income records linked to this contact.
+      </div>
+      {% endif %}
+    </div>
+    {% else %}
+    <div>
+      <h2 class="font-display text-lg font-semibold text-ink mb-3">Expense records</h2>
+      {% if expense_records %}
+      <div class="bg-papercard border border-line rounded-lg divide-y divide-line">
+        {% for e in expense_records %}
+        <a href="/expenses/{{ e.id }}/edit" class="flex items-center justify-between px-4 py-3 hover:bg-white transition-colors">
+          <div>
+            <p class="text-sm font-medium text-ink">{{ e.invoice_number or ("Expense #" ~ e.id) }}</p>
+            <p class="text-xs text-ink/40">{{ e.date.strftime('%d %b %Y') }}</p>
+          </div>
+          <p class="num text-sm font-semibold text-rust">{{ e.total | money }}</p>
+        </a>
+        {% endfor %}
+      </div>
+      {% else %}
+      <div class="bg-papercard border border-dashed border-line rounded-lg px-4 py-8 text-center text-sm text-ink/40">
+        No expense records linked to this contact.
+      </div>
+      {% endif %}
+    </div>
+    {% endif %}
+  </div>
+</div>
+
+<a href="/contacts" class="text-sm text-ink/50 hover:text-ink">← Back to contacts</a>
+
+{% endblock %}

@@ -1,0 +1,92 @@
+{% extends "base.html" %}
+{% block title %}Expenses | {{ business_name() }}{% endblock %}
+{% block content %}
+
+<div class="flex items-end justify-between mb-8">
+  <h1 class="font-display text-3xl font-semibold text-ink">Expenses</h1>
+  {% if user.role in ['owner', 'bookkeeper'] %}
+  <a href="/expenses/new" class="bg-accent text-white text-sm font-medium px-4 py-2.5 rounded hover:bg-accentdeep transition-colors">+ Record expense</a>
+  {% endif %}
+</div>
+
+<form method="get" action="/expenses" class="flex flex-wrap items-end gap-3 mb-6 bg-papercard border border-line rounded-lg p-4">
+  <div>
+    <label class="block text-xs uppercase tracking-wide text-ink/50 mb-1.5"><strong>Date range</strong></label>
+    <select name="range" id="range-select" onchange="toggleCustomRange()" class="border border-line rounded px-3 py-2 bg-white text-ink text-sm">
+      {% for key, label in range_labels.items() %}
+      <option value="{{ key }}" {% if selected_range == key %}selected{% endif %}>{{ label }}</option>
+      {% endfor %}
+    </select>
+  </div>
+  <div id="custom-range-fields" class="flex items-end gap-3 {% if selected_range != 'custom' %}hidden{% endif %}">
+    <div>
+      <label class="block text-xs uppercase tracking-wide text-ink/50 mb-1.5"><strong>From</strong></label>
+      <input type="date" name="custom_start" value="{{ custom_start }}" class="border border-line rounded px-3 py-2 bg-white text-ink text-sm" />
+    </div>
+    <div>
+      <label class="block text-xs uppercase tracking-wide text-ink/50 mb-1.5"><strong>To</strong></label>
+      <input type="date" name="custom_end" value="{{ custom_end }}" class="border border-line rounded px-3 py-2 bg-white text-ink text-sm" />
+    </div>
+  </div>
+  <div>
+    <label class="block text-xs uppercase tracking-wide text-ink/50 mb-1.5"><strong>Supplier</strong></label>
+    <input type="text" name="supplier" value="{{ supplier_query }}" placeholder="Search by supplier"
+      class="border border-line rounded px-3 py-2 bg-white text-ink text-sm" />
+  </div>
+  <button type="submit" class="border border-accent text-accent text-sm font-medium px-4 py-2 rounded hover:bg-accentlight/30">Apply</button>
+  {% if (selected_range and selected_range != 'all') or supplier_query %}
+  <a href="/expenses" class="text-sm text-ink/50 hover:text-ink px-2 py-2">Clear filters</a>
+  {% endif %}
+</form>
+
+{% if expenses %}
+<div class="bg-papercard border border-line rounded-lg overflow-hidden mb-4">
+  <table class="w-full text-sm">
+    <thead>
+      <tr class="border-b border-line text-left text-xs uppercase tracking-wide text-ink/40">
+        <th class="px-5 py-3 font-medium"><strong>Date</strong></th>
+        <th class="px-5 py-3 font-medium"><strong>Invoice number</strong></th>
+        <th class="px-5 py-3 font-medium"><strong>Supplier</strong></th>
+        <th class="px-5 py-3 font-medium text-right"><strong>Amount</strong></th>
+        <th class="px-5 py-3 font-medium text-right"><strong>Balance due</strong></th>
+        <th class="px-5 py-3 font-medium text-center"><strong>Attachment</strong></th>
+      </tr>
+    </thead>
+    <tbody class="divide-y divide-line">
+      {% for e in expenses %}
+      <tr class="hover:bg-white transition-colors">
+        <td class="px-5 py-4 whitespace-nowrap cursor-pointer" onclick="window.location='/expenses/{{ e.id }}/edit'">{{ e.date.strftime('%d %b %Y') }}</td>
+        <td class="px-5 py-4 cursor-pointer" onclick="window.location='/expenses/{{ e.id }}/edit'">{{ e.invoice_number or "—" }}</td>
+        <td class="px-5 py-4 font-medium cursor-pointer" onclick="window.location='/expenses/{{ e.id }}/edit'">
+          {% if e.contact %}{{ e.contact.display_name }}{% else %}<span class="text-ink/30">—</span>{% endif %}
+        </td>
+        <td class="px-5 py-4 text-right num font-semibold text-rust whitespace-nowrap cursor-pointer" onclick="window.location='/expenses/{{ e.id }}/edit'">{{ e.total | money }}</td>
+        <td class="px-5 py-4 text-right num whitespace-nowrap cursor-pointer {% if e.balance_due > 0 %}text-rust font-medium{% else %}text-ink/40{% endif %}" onclick="window.location='/expenses/{{ e.id }}/edit'">{{ e.balance_due | money }}</td>
+        <td class="px-5 py-4 text-center">
+          {% if e.attachment_path %}
+          <a href="/attachments/{{ e.id }}" target="_blank" title="View attachment" class="inline-flex text-ink/50 hover:text-ink">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>
+          </a>
+          {% else %}
+          <span class="text-ink/20">—</span>
+          {% endif %}
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% else %}
+<div class="bg-papercard border border-dashed border-line rounded-lg px-4 py-16 text-center text-sm text-ink/40">
+  {% if (selected_range and selected_range != 'all') or supplier_query %}No expenses match this filter.{% else %}No expenses recorded yet. {% if user.role in ['owner', 'bookkeeper'] %}<a href="/expenses/new" class="text-rust underline">Record your first expense →</a>{% endif %}{% endif %}
+</div>
+{% endif %}
+
+<script>
+  function toggleCustomRange() {
+    const select = document.getElementById('range-select');
+    document.getElementById('custom-range-fields').classList.toggle('hidden', select.value !== 'custom');
+  }
+</script>
+
+{% endblock %}

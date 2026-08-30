@@ -1,0 +1,156 @@
+{% extends "base.html" %}
+{% block title %}{% if contact %}Edit contact{% else %}Create contact{% endif %} | {{ business_name() }}{% endblock %}
+{% block content %}
+
+<div class="max-w-2xl">
+  <div class="flex items-center justify-between mb-8">
+    <h1 class="font-display text-3xl font-semibold text-ink">{% if contact %}Edit contact{% else %}Create contact{% endif %}</h1>
+    {% if contact %}
+    <form method="post" action="/contacts/{{ contact.id }}/delete" id="delete-contact-form">
+      <button type="button" onclick="openConfirmModal(document.getElementById('delete-contact-form'), {title: 'Delete this contact?', message: 'Income and expense records linked to them will be kept but unlinked. This can\'t be undone.'})" class="text-sm text-rust hover:underline">Delete</button>
+    </form>
+    {% endif %}
+  </div>
+
+  {% if error %}
+  <div class="text-sm text-rust bg-rustlight/40 border border-rust/30 rounded px-3 py-2 mb-6">{{ error }}</div>
+  {% endif %}
+
+  <form method="post" action="{% if contact %}/contacts/{{ contact.id }}/edit{% else %}/contacts/new{% endif %}" class="space-y-6">
+
+    <div class="bg-papercard border border-line rounded-lg p-5 space-y-4">
+      <div class="grid grid-cols-2 gap-5">
+        <div>
+          <label class="block text-xs uppercase tracking-wide text-ink/50 mb-1.5">Contact type <span class="text-rust">*</span></label>
+          <div class="flex gap-4 pt-2">
+            <label class="flex items-center gap-2 text-sm">
+              <input type="radio" name="contact_type" value="customer" {% if not contact or contact.contact_type == 'customer' %}checked{% endif %} />
+              Customer
+            </label>
+            <label class="flex items-center gap-2 text-sm">
+              <input type="radio" name="contact_type" value="supplier" {% if contact and contact.contact_type == 'supplier' %}checked{% endif %} />
+              Supplier
+            </label>
+          </div>
+        </div>
+        <div>
+          <label class="block text-xs uppercase tracking-wide text-ink/50 mb-1.5">Designation <span class="text-rust">*</span></label>
+          <div class="flex gap-4 pt-2">
+            <label class="flex items-center gap-2 text-sm">
+              <input type="radio" name="designation" value="company" onchange="toggleDesignation()" {% if contact and contact.designation == 'company' %}checked{% endif %} />
+              Company
+            </label>
+            <label class="flex items-center gap-2 text-sm">
+              <input type="radio" name="designation" value="individual" onchange="toggleDesignation()" {% if not contact or contact.designation == 'individual' %}checked{% endif %} />
+              Individual
+            </label>
+          </div>
+        </div>
+      </div>
+
+      <div id="company-fields" class="space-y-4">
+        <div>
+          <label class="block text-xs uppercase tracking-wide text-ink/50 mb-1.5">Company name <span class="text-rust">*</span></label>
+          <input type="text" name="company_name" value="{% if contact %}{{ contact.company_name or '' }}{% endif %}"
+            class="w-full border border-line rounded px-3 py-2 bg-white text-ink" />
+        </div>
+        <div class="grid grid-cols-2 gap-5">
+          <div>
+            <label class="block text-xs uppercase tracking-wide text-ink/50 mb-1.5">Contact person</label>
+            <input type="text" name="contact_person" value="{% if contact %}{{ contact.contact_person or '' }}{% endif %}"
+              class="w-full border border-line rounded px-3 py-2 bg-white text-ink" />
+          </div>
+          <div>
+            <label class="block text-xs uppercase tracking-wide text-ink/50 mb-1.5">Website</label>
+            <input type="text" name="website" value="{% if contact %}{{ contact.website or '' }}{% endif %}" placeholder="https://"
+              class="w-full border border-line rounded px-3 py-2 bg-white text-ink" />
+          </div>
+        </div>
+      </div>
+
+      <div id="individual-fields" class="grid grid-cols-2 gap-5">
+        <div>
+          <label class="block text-xs uppercase tracking-wide text-ink/50 mb-1.5">First name <span class="text-rust">*</span></label>
+          <input type="text" name="first_name" value="{% if contact %}{{ contact.first_name or '' }}{% endif %}"
+            class="w-full border border-line rounded px-3 py-2 bg-white text-ink" />
+        </div>
+        <div>
+          <label class="block text-xs uppercase tracking-wide text-ink/50 mb-1.5">Surname <span class="text-rust">*</span></label>
+          <input type="text" name="last_name" value="{% if contact %}{{ contact.last_name or '' }}{% endif %}"
+            class="w-full border border-line rounded px-3 py-2 bg-white text-ink" />
+        </div>
+      </div>
+    </div>
+
+    <div class="bg-papercard border border-line rounded-lg p-5">
+      <h2 class="font-display text-sm font-semibold text-ink mb-3">Contact details</h2>
+      <div class="grid grid-cols-2 gap-5">
+        <div>
+          <label class="block text-xs uppercase tracking-wide text-ink/50 mb-1.5">Email</label>
+          <input type="email" name="email" value="{% if contact %}{{ contact.email or '' }}{% endif %}"
+            class="w-full border border-line rounded px-3 py-2 bg-white text-ink" />
+        </div>
+        <div>
+          <label class="block text-xs uppercase tracking-wide text-ink/50 mb-1.5">Phone</label>
+          <input type="text" name="phone" value="{% if contact %}{{ contact.phone or '' }}{% endif %}"
+            class="w-full border border-line rounded px-3 py-2 bg-white text-ink" />
+        </div>
+      </div>
+    </div>
+
+    <div class="bg-papercard border border-line rounded-lg p-5">
+      <h2 class="font-display text-sm font-semibold text-ink mb-3">Address</h2>
+      <div class="space-y-4">
+        <div>
+          <label class="block text-xs uppercase tracking-wide text-ink/50 mb-1.5">Street address</label>
+          <input type="text" name="street_address" value="{% if contact %}{{ contact.street_address or '' }}{% endif %}"
+            class="w-full border border-line rounded px-3 py-2 bg-white text-ink" />
+        </div>
+        <div class="grid grid-cols-3 gap-5">
+          <div>
+            <label class="block text-xs uppercase tracking-wide text-ink/50 mb-1.5">Suburb</label>
+            <input type="text" name="suburb" value="{% if contact %}{{ contact.suburb or '' }}{% endif %}"
+              class="w-full border border-line rounded px-3 py-2 bg-white text-ink" />
+          </div>
+          <div>
+            <label class="block text-xs uppercase tracking-wide text-ink/50 mb-1.5">State/territory</label>
+            <select name="state" class="w-full border border-line rounded px-3 py-2 bg-white text-ink">
+              <option value="">—</option>
+              {% for s in states %}
+              <option value="{{ s }}" {% if contact and contact.state == s %}selected{% endif %}>{{ s }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div>
+            <label class="block text-xs uppercase tracking-wide text-ink/50 mb-1.5">Postcode</label>
+            <input type="text" name="postcode" value="{% if contact %}{{ contact.postcode or '' }}{% endif %}"
+              class="w-full border border-line rounded px-3 py-2 bg-white text-ink" />
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div>
+      <label class="block text-xs uppercase tracking-wide text-ink/50 mb-1.5">Notes</label>
+      <textarea name="notes" rows="3" class="w-full border border-line rounded px-3 py-2 bg-white text-ink">{% if contact %}{{ contact.notes or '' }}{% endif %}</textarea>
+    </div>
+
+    <div class="flex gap-3 pt-2">
+      <button type="submit" class="bg-accent text-white text-sm font-medium px-5 py-2.5 rounded hover:bg-accentdeep transition-colors">
+        {% if contact %}Save changes{% else %}Create contact{% endif %}
+      </button>
+      <a href="{% if contact %}/contacts/{{ contact.id }}{% else %}/contacts{% endif %}" class="text-sm text-ink/50 hover:text-ink px-5 py-2.5">Cancel</a>
+    </div>
+  </form>
+</div>
+
+<script>
+  function toggleDesignation() {
+    const isCompany = document.querySelector('input[name="designation"][value="company"]').checked;
+    document.getElementById('company-fields').style.display = isCompany ? '' : 'none';
+    document.getElementById('individual-fields').style.display = isCompany ? 'none' : '';
+  }
+  toggleDesignation();
+</script>
+
+{% endblock %}

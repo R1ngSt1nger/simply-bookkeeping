@@ -1,0 +1,191 @@
+{# Expects: contacts (list of {id, name, type} dicts), selected_contact (Contact object or None).
+   Optional: picker_label (default "Contact"), picker_required (bool, default false),
+   picker_contact_type ("customer" or "supplier", default "customer") — used for the
+   "+ Create new..." quick-add option pinned to the top of the dropdown. #}
+<div>
+  <label class="block text-xs uppercase tracking-wide text-ink/50 mb-1.5"><strong>{{ picker_label | default("Contact") }}</strong>{% if picker_required %} <span class="text-rust">*</span>{% endif %}</label>
+  <div class="relative">
+    <input type="hidden" name="contact_id" id="contact-id-input" value="{{ selected_contact.id if selected_contact else '' }}" />
+    <input type="text" id="contact-search-input" autocomplete="off"
+      value="{{ selected_contact.display_name if selected_contact else '' }}"
+      placeholder="Search by name…"
+      class="w-full border border-line rounded px-3 py-2 bg-white text-ink" />
+    <div id="contact-dropdown" class="hidden absolute z-10 mt-1 w-full bg-white border border-line rounded shadow-lg max-h-56 overflow-y-auto"></div>
+  </div>
+</div>
+
+<!-- Quick-add contact modal -->
+<div id="quick-contact-backdrop" class="hidden fixed inset-0 bg-ink/40 z-50 flex items-center justify-center p-4">
+  <div class="bg-white rounded-lg shadow-xl max-w-sm w-full p-6">
+    <h3 class="font-display text-lg font-semibold text-ink mb-4">Create {{ "customer" if (picker_contact_type | default("customer")) == "customer" else "supplier" }}</h3>
+    <div id="quick-contact-error" class="hidden text-xs text-rust bg-rustlight/30 border border-rust/30 rounded px-3 py-2 mb-3"></div>
+
+    <div class="space-y-3">
+      <div class="flex gap-4">
+        <label class="flex items-center gap-2 text-sm">
+          <input type="radio" name="quick_designation" value="individual" checked onchange="toggleQuickDesignation()" /> Individual
+        </label>
+        <label class="flex items-center gap-2 text-sm">
+          <input type="radio" name="quick_designation" value="company" onchange="toggleQuickDesignation()" /> Company
+        </label>
+      </div>
+      <div id="quick-individual-fields" class="grid grid-cols-2 gap-3">
+        <input type="text" id="quick-first-name" placeholder="First name" class="border border-line rounded px-3 py-2 text-sm" />
+        <input type="text" id="quick-last-name" placeholder="Surname" class="border border-line rounded px-3 py-2 text-sm" />
+      </div>
+      <div id="quick-company-fields" class="hidden">
+        <input type="text" id="quick-company-name" placeholder="Company name" class="w-full border border-line rounded px-3 py-2 text-sm" />
+      </div>
+      <input type="email" id="quick-email" placeholder="Email" class="w-full border border-line rounded px-3 py-2 text-sm" />
+      <input type="text" id="quick-phone" placeholder="Phone" class="w-full border border-line rounded px-3 py-2 text-sm" />
+    </div>
+
+    <div class="flex justify-end gap-3 mt-5">
+      <button type="button" onclick="closeQuickContactModal()" class="text-sm text-ink/60 hover:text-ink px-3 py-2">Cancel</button>
+      <button type="button" onclick="submitQuickContact()" class="text-sm text-white px-4 py-2 rounded bg-accent hover:bg-accentdeep transition-colors">Create</button>
+    </div>
+  </div>
+</div>
+
+<script>
+(function() {
+  const ALL_CONTACTS = {{ contacts | tojson | safe }};
+  const IS_REQUIRED = {{ 'true' if picker_required else 'false' }};
+  const PICKER_CONTACT_TYPE = {{ (picker_contact_type | default("customer")) | tojson | safe }};
+  const searchInput = document.getElementById('contact-search-input');
+  const idInput = document.getElementById('contact-id-input');
+  const dropdown = document.getElementById('contact-dropdown');
+
+  function createRowLabel() {
+    return PICKER_CONTACT_TYPE === 'supplier' ? '+ Create new supplier' : '+ Create new customer';
+  }
+
+  function renderOptions(list) {
+    dropdown.innerHTML = '';
+
+    const createRow = document.createElement('div');
+    createRow.className = 'px-3 py-2 text-sm text-accent hover:bg-accentlight/30 cursor-pointer font-medium border-b border-line';
+    createRow.textContent = createRowLabel();
+    createRow.addEventListener('mousedown', (e) => {
+      e.preventDefault();
+      dropdown.classList.add('hidden');
+      openQuickContactModal();
+    });
+    dropdown.appendChild(createRow);
+
+    if (!IS_REQUIRED) {
+      const clearRow = document.createElement('div');
+      clearRow.className = 'px-3 py-2 text-sm text-ink/40 hover:bg-papercard cursor-pointer';
+      clearRow.textContent = 'None';
+      clearRow.addEventListener('mousedown', (e) => {
+        e.preventDefault();
+        idInput.value = '';
+        searchInput.value = '';
+        dropdown.classList.add('hidden');
+      });
+      dropdown.appendChild(clearRow);
+    }
+
+    if (list.length === 0) {
+      const empty = document.createElement('div');
+      empty.className = 'px-3 py-2 text-sm text-ink/30';
+      empty.textContent = 'No matching contacts';
+      dropdown.appendChild(empty);
+      return;
+    }
+    list.slice(0, 30).forEach(c => {
+      const row = document.createElement('div');
+      row.className = 'px-3 py-2 text-sm hover:bg-papercard cursor-pointer flex items-center justify-between';
+      row.innerHTML = `<span>${c.name}</span><span class="text-xs uppercase tracking-wide ${c.type === 'customer' ? 'text-brass' : 'text-rust'}">${c.type}</span>`;
+      row.addEventListener('mousedown', (e) => {
+        e.preventDefault();
+        idInput.value = c.id;
+        searchInput.value = c.name;
+        dropdown.classList.add('hidden');
+      });
+      dropdown.appendChild(row);
+    });
+  }
+
+  searchInput.addEventListener('focus', () => {
+    const q = searchInput.value.trim().toLowerCase();
+    const filtered = q ? ALL_CONTACTS.filter(c => c.name.toLowerCase().includes(q)) : ALL_CONTACTS;
+    renderOptions(filtered);
+    dropdown.classList.remove('hidden');
+  });
+
+  searchInput.addEventListener('input', () => {
+    idInput.value = '';
+    const q = searchInput.value.trim().toLowerCase();
+    const filtered = q ? ALL_CONTACTS.filter(c => c.name.toLowerCase().includes(q)) : ALL_CONTACTS;
+    renderOptions(filtered);
+    dropdown.classList.remove('hidden');
+  });
+
+  document.addEventListener('click', (e) => {
+    if (!dropdown.contains(e.target) && e.target !== searchInput) {
+      dropdown.classList.add('hidden');
+    }
+  });
+
+  // ---- Quick-add contact modal ----
+  window.openQuickContactModal = function() {
+    document.getElementById('quick-contact-error').classList.add('hidden');
+    document.getElementById('quick-first-name').value = '';
+    document.getElementById('quick-last-name').value = '';
+    document.getElementById('quick-company-name').value = '';
+    document.getElementById('quick-email').value = '';
+    document.getElementById('quick-phone').value = '';
+    document.querySelector('input[name="quick_designation"][value="individual"]').checked = true;
+    toggleQuickDesignation();
+    document.getElementById('quick-contact-backdrop').classList.remove('hidden');
+  };
+
+  window.closeQuickContactModal = function() {
+    document.getElementById('quick-contact-backdrop').classList.add('hidden');
+  };
+
+  window.toggleQuickDesignation = function() {
+    const isCompany = document.querySelector('input[name="quick_designation"][value="company"]').checked;
+    document.getElementById('quick-company-fields').classList.toggle('hidden', !isCompany);
+    document.getElementById('quick-individual-fields').classList.toggle('hidden', isCompany);
+  };
+
+  window.submitQuickContact = function() {
+    const designation = document.querySelector('input[name="quick_designation"]:checked').value;
+    const errorEl = document.getElementById('quick-contact-error');
+    errorEl.classList.add('hidden');
+
+    const body = new URLSearchParams();
+    body.append('contact_type', PICKER_CONTACT_TYPE);
+    body.append('designation', designation);
+    body.append('first_name', document.getElementById('quick-first-name').value);
+    body.append('last_name', document.getElementById('quick-last-name').value);
+    body.append('company_name', document.getElementById('quick-company-name').value);
+    body.append('email', document.getElementById('quick-email').value);
+    body.append('phone', document.getElementById('quick-phone').value);
+
+    fetch('/contacts/quick-create', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: body.toString(),
+    })
+      .then(async (resp) => {
+        const data = await resp.json();
+        if (!resp.ok) {
+          errorEl.textContent = data.error || 'Something went wrong.';
+          errorEl.classList.remove('hidden');
+          return;
+        }
+        ALL_CONTACTS.push(data);
+        idInput.value = data.id;
+        searchInput.value = data.name;
+        closeQuickContactModal();
+      })
+      .catch(() => {
+        errorEl.textContent = 'Could not reach the server. Please try again.';
+        errorEl.classList.remove('hidden');
+      });
+  };
+})();
+</script>

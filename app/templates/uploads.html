@@ -1,0 +1,83 @@
+{% extends "base.html" %}
+{% block title %}Uploads | {{ business_name() }}{% endblock %}
+{% block content %}
+
+<div class="flex items-end justify-between mb-8">
+  <h1 class="font-display text-3xl font-semibold text-ink">Uploads</h1>
+</div>
+
+<p class="text-sm text-ink/50 mb-5">Drop receipts or invoices here, then assign each one to a new expense record when you're ready. Files disappear from this list once assigned.</p>
+
+{% if user.role in ['owner', 'bookkeeper'] %}
+<form id="upload-form" method="post" action="/uploads" enctype="multipart/form-data">
+  <div id="dropzone" class="border-2 border-dashed border-line rounded-lg px-6 py-12 text-center bg-papercard hover:bg-white transition-colors cursor-pointer mb-8">
+    <p class="text-sm text-ink/60 mb-1">Drag files here, or <span class="text-accent underline">click to browse</span></p>
+    <p class="text-xs text-ink/30">PDF, JPG, or PNG</p>
+    <input type="file" id="file-input" name="files" multiple accept=".pdf,.jpg,.jpeg,.png" class="hidden" />
+  </div>
+</form>
+{% endif %}
+
+{% if files %}
+<div class="bg-papercard border border-line rounded-lg divide-y divide-line">
+  {% for f in files %}
+  <div class="flex items-center justify-between px-4 py-3">
+    <a href="/uploads/{{ f.id }}/view" target="_blank" class="text-sm text-ink hover:underline flex items-center gap-2">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" class="shrink-0"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>
+      {{ f.original_filename }}
+    </a>
+    <div class="flex items-center gap-3">
+      <span class="text-xs text-ink/30">{{ f.uploaded_at.strftime('%d %b %Y') }}</span>
+      {% if user.role in ['owner', 'bookkeeper'] %}
+      <a href="/expenses/new?upload_id={{ f.id }}" class="text-xs bg-accent text-white px-3 py-1.5 rounded hover:bg-accentdeep transition-colors">Assign to expense</a>
+      <form method="post" action="/uploads/{{ f.id }}/delete" id="delete-upload-{{ f.id }}">
+        <button type="button" onclick="openConfirmModal(document.getElementById('delete-upload-{{ f.id }}'), {title: 'Delete this upload?', message: &quot;This can't be undone.&quot;})" class="text-xs text-rust hover:underline">Delete</button>
+      </form>
+      {% endif %}
+    </div>
+  </div>
+  {% endfor %}
+</div>
+{% else %}
+<div class="bg-papercard border border-dashed border-line rounded-lg px-4 py-16 text-center text-sm text-ink/40">
+  No pending uploads.
+</div>
+{% endif %}
+
+{% if user.role in ['owner', 'bookkeeper'] %}
+<script>
+  const dropzone = document.getElementById('dropzone');
+  const fileInput = document.getElementById('file-input');
+  const uploadForm = document.getElementById('upload-form');
+
+  dropzone.addEventListener('click', () => fileInput.click());
+
+  fileInput.addEventListener('change', () => {
+    if (fileInput.files.length > 0) uploadForm.submit();
+  });
+
+  ['dragenter', 'dragover'].forEach(evt => {
+    dropzone.addEventListener(evt, (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      dropzone.classList.add('border-brass', 'bg-brasslight/10');
+    });
+  });
+  ['dragleave', 'drop'].forEach(evt => {
+    dropzone.addEventListener(evt, (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      dropzone.classList.remove('border-brass', 'bg-brasslight/10');
+    });
+  });
+  dropzone.addEventListener('drop', (e) => {
+    const dt = e.dataTransfer;
+    if (dt && dt.files.length > 0) {
+      fileInput.files = dt.files;
+      uploadForm.submit();
+    }
+  });
+</script>
+{% endif %}
+
+{% endblock %}

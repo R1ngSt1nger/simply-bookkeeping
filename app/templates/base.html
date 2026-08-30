@@ -1,0 +1,296 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>{% block title %}Simply Bookkeeping{% endblock %}</title>
+<link rel="icon" type="image/png" href="/static/img/favicon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://unpkg.com/htmx.org@1.9.12"></script>
+<script>
+  tailwind.config = {
+    theme: {
+      extend: {
+        colors: {
+          ink: '{{ theme.ink }}',
+          inkdeep: '{{ theme.inkdeep }}',
+          paper: '{{ theme.paper }}',
+          papercard: '{{ theme.papercard }}',
+          accent: '{{ theme.accent }}',
+          accentdeep: '{{ theme.accentdeep }}',
+          accentlight: '{{ theme.accentlight }}',
+          brass: '{{ theme.brass }}',
+          brasslight: '{{ theme.brasslight }}',
+          rust: '{{ theme.rust }}',
+          rustlight: '{{ theme.rustlight }}',
+          line: '{{ theme.line }}',
+        },
+        fontFamily: {
+          display: ['Poppins', 'sans-serif'],
+          sans: ['Poppins', 'sans-serif'],
+          mono: ['IBM Plex Mono', 'monospace'],
+        },
+      }
+    }
+  }
+</script>
+<style>
+  body { background-color: {{ theme.paper }}; }
+  .num { font-family: 'IBM Plex Mono', monospace; font-variant-numeric: tabular-nums; }
+  .ledger-rule { border-top: 1px solid {{ theme.line }}; }
+  .ledger-rule-thick { border-top: 2px solid {{ theme.ink }}; }
+  ::selection { background: {{ theme.accentlight }}; }
+  input:focus, select:focus, textarea:focus, button:focus-visible, a:focus-visible {
+    outline: 2px solid {{ theme.accent }}; outline-offset: 2px;
+  }
+  #sidebar { width: 15rem; transition: width 0.15s ease; }
+  #sidebar.collapsed { width: 4.25rem; }
+  #sidebar.collapsed .sidebar-label,
+  #sidebar.collapsed .sidebar-brand-text,
+  #sidebar.collapsed .sidebar-user-text { display: none; }
+  #sidebar.collapsed .sidebar-link { justify-content: center; }
+  #sidebar.collapsed .app-logo { display: none; }
+  .settings-section > summary { list-style: none; cursor: pointer; }
+  .settings-section > summary::-webkit-details-marker { display: none; }
+  .settings-section > summary .chevron { transition: transform 0.15s ease; }
+  .settings-section[open] > summary .chevron { transform: rotate(90deg); }
+  .brand-name-clamp {
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    word-break: break-word;
+  }
+</style>
+{% block extra_head %}{% endblock %}
+</head>
+<body class="min-h-screen font-sans text-ink">
+
+<div class="flex min-h-screen">
+  {% if user %}
+  <aside id="sidebar" class="shrink-0 bg-papercard border-r border-line flex flex-col">
+    <div class="flex items-start justify-between px-4 py-4 border-b border-line gap-2">
+      {% if all_businesses and all_businesses|length > 1 %}
+      <div class="relative sidebar-brand-text min-w-0 flex-1">
+        <button id="biz-switcher-toggle" class="w-full text-left flex items-start gap-2">
+          {% if active_business.logo_filename %}
+          <img src="/settings/business-logo/{{ active_business.slug }}" alt="" class="w-6 h-6 rounded object-contain shrink-0 mt-0.5 bg-white border border-line" />
+          {% endif %}
+          <span class="brand-name-clamp font-display text-base font-semibold text-ink tracking-tight leading-tight flex-1">{{ business_name() }}</span>
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="shrink-0 mt-1"><polyline points="6 9 12 15 18 9"/></svg>
+        </button>
+        <div id="biz-switcher-menu" class="hidden absolute z-20 mt-2 w-56 bg-white border border-line rounded shadow-lg py-1">
+          {% for b in all_businesses %}
+          <a href="/switch-business/{{ b.slug }}" class="block px-3 py-2 text-sm hover:bg-papercard {% if b.slug == active_business.slug %}text-ink font-medium{% else %}text-ink/60{% endif %}">{{ b.name }}</a>
+          {% endfor %}
+          {% if user.role == 'owner' %}
+          <a href="/settings" class="block px-3 py-2 text-xs text-accent hover:bg-papercard border-t border-line mt-1">Manage businesses →</a>
+          {% endif %}
+        </div>
+      </div>
+      {% else %}
+      <a href="/" class="sidebar-brand-text min-w-0 flex-1 flex items-start gap-2">
+        {% if active_business.logo_filename %}
+        <img src="/settings/business-logo/{{ active_business.slug }}" alt="" class="w-6 h-6 rounded object-contain shrink-0 mt-0.5 bg-white border border-line" />
+        {% endif %}
+        <span class="brand-name-clamp font-display text-base font-semibold text-ink tracking-tight leading-tight">{{ business_name() }}</span>
+      </a>
+      {% endif %}
+      <button id="sidebar-toggle" class="text-ink/40 hover:text-ink p-1 shrink-0" aria-label="Toggle sidebar">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+      </button>
+    </div>
+
+    <nav class="flex-1 py-3 px-2 flex flex-col gap-0.5 overflow-y-auto">
+      <a href="/" class="sidebar-link flex items-center gap-3 px-3 py-2.5 rounded text-sm font-medium {% if request.url.path == '/' %}bg-white text-accent{% else %}text-ink/60 hover:text-ink hover:bg-white/60{% endif %}">
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" class="shrink-0"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+        <span class="sidebar-label">Dashboard</span>
+      </a>
+      <a href="/income" class="sidebar-link flex items-center gap-3 px-3 py-2.5 rounded text-sm font-medium {% if request.url.path.startswith('/income') %}bg-white text-accent{% else %}text-ink/60 hover:text-ink hover:bg-white/60{% endif %}">
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" class="shrink-0"><polyline points="3 17 9 11 13 15 21 7"/><polyline points="14 7 21 7 21 14"/></svg>
+        <span class="sidebar-label">Income</span>
+      </a>
+      <a href="/expenses" class="sidebar-link flex items-center gap-3 px-3 py-2.5 rounded text-sm font-medium {% if request.url.path.startswith('/expenses') %}bg-white text-accent{% else %}text-ink/60 hover:text-ink hover:bg-white/60{% endif %}">
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" class="shrink-0"><polyline points="3 7 9 13 13 9 21 17"/><polyline points="21 10 21 17 14 17"/></svg>
+        <span class="sidebar-label">Expenses</span>
+      </a>
+      <a href="/contacts" class="sidebar-link flex items-center gap-3 px-3 py-2.5 rounded text-sm font-medium {% if request.url.path.startswith('/contacts') %}bg-white text-accent{% else %}text-ink/60 hover:text-ink hover:bg-white/60{% endif %}">
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" class="shrink-0"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 4-7 8-7s8 3 8 7"/></svg>
+        <span class="sidebar-label">Contacts</span>
+      </a>
+      <a href="/categories" class="sidebar-link flex items-center gap-3 px-3 py-2.5 rounded text-sm font-medium {% if request.url.path.startswith('/categories') %}bg-white text-accent{% else %}text-ink/60 hover:text-ink hover:bg-white/60{% endif %}">
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" class="shrink-0"><path d="M3 3h8l10 10-8 8L3 11V3z"/><circle cx="7" cy="7" r="1"/></svg>
+        <span class="sidebar-label">Categories</span>
+      </a>
+      <a href="/reports" class="sidebar-link flex items-center gap-3 px-3 py-2.5 rounded text-sm font-medium {% if request.url.path.startswith('/reports') %}bg-white text-accent{% else %}text-ink/60 hover:text-ink hover:bg-white/60{% endif %}">
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" class="shrink-0"><line x1="4" y1="20" x2="4" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="20" y1="20" x2="20" y2="14"/></svg>
+        <span class="sidebar-label">P&amp;L Report</span>
+      </a>
+      <a href="/uploads" class="sidebar-link flex items-center gap-3 px-3 py-2.5 rounded text-sm font-medium {% if request.url.path.startswith('/uploads') %}bg-white text-accent{% else %}text-ink/60 hover:text-ink hover:bg-white/60{% endif %}">
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" class="shrink-0"><path d="M12 16V4"/><polyline points="6 10 12 4 18 10"/><path d="M4 16v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2"/></svg>
+        <span class="sidebar-label">Uploads</span>
+      </a>
+      {% if user.role in ['owner', 'bookkeeper'] %}
+      <a href="/settings" class="sidebar-link flex items-center gap-3 px-3 py-2.5 rounded text-sm font-medium {% if request.url.path.startswith('/settings') %}bg-white text-accent{% else %}text-ink/60 hover:text-ink hover:bg-white/60{% endif %}">
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" class="shrink-0"><line x1="4" y1="21" x2="4" y2="14"/><line x1="4" y1="10" x2="4" y2="3"/><line x1="12" y1="21" x2="12" y2="12"/><line x1="12" y1="8" x2="12" y2="3"/><line x1="20" y1="21" x2="20" y2="16"/><line x1="20" y1="12" x2="20" y2="3"/><circle cx="4" cy="12" r="2"/><circle cx="12" cy="10" r="2"/><circle cx="20" cy="14" r="2"/></svg>
+        <span class="sidebar-label">Settings</span>
+      </a>
+      {% endif %}
+    </nav>
+
+    <div class="border-t border-line p-2">
+      <a href="/profile" class="sidebar-link flex items-center gap-3 px-3 py-2.5 rounded text-sm font-medium {% if request.url.path.startswith('/profile') %}bg-white text-accent{% else %}text-ink/60 hover:text-ink hover:bg-white/60{% endif %}">
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" class="shrink-0"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="10" r="3"/><path d="M6.5 19a6 6 0 0 1 11 0"/></svg>
+        <span class="sidebar-label sidebar-user-text truncate">{{ user.display_name or user.username }} <span class="block text-xs uppercase tracking-wide {% if user.role == 'accountant' %}text-ink/40{% else %}text-accent{% endif %}">{{ user.role }}</span></span>
+      </a>
+      <a href="/logout" class="sidebar-link flex items-center gap-3 px-3 py-2.5 rounded text-sm font-medium text-ink/50 hover:text-ink hover:bg-white/60">
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" class="shrink-0"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+        <span class="sidebar-label">Log out</span>
+      </a>
+      <div class="app-logo flex justify-center pt-3 mt-1 border-t border-line">
+        <img src="/static/img/simply-bookkeeping-logo.png" alt="Simply Bookkeeping" class="h-12 opacity-60" />
+      </div>
+    </div>
+  </aside>
+  {% endif %}
+
+  <div class="flex-1 min-w-0">
+    <main class="max-w-6xl mx-auto px-6 py-10">
+      {% block content %}{% endblock %}
+    </main>
+  </div>
+</div>
+
+<!-- Reusable in-app confirmation modal, replaces native confirm()/prompt() everywhere -->
+<div id="confirm-modal-backdrop" class="hidden fixed inset-0 bg-ink/40 z-50 flex items-center justify-center p-4">
+  <div class="bg-white rounded-lg shadow-xl max-w-sm w-full p-6">
+    <h3 id="confirm-modal-title" class="font-display text-lg font-semibold text-ink mb-2"></h3>
+    <p id="confirm-modal-message" class="text-sm text-ink/60 mb-4"></p>
+    <div id="confirm-modal-input-wrap" class="hidden mb-1">
+      <input type="text" id="confirm-modal-input" class="w-full border border-line rounded px-3 py-2 text-sm" autocomplete="off" />
+    </div>
+    <p id="confirm-modal-error" class="hidden text-xs text-rust mb-3 mt-1"></p>
+    <div class="flex justify-end gap-3 mt-4">
+      <button type="button" id="confirm-modal-cancel-btn" onclick="closeConfirmModal()" class="text-sm text-ink/60 hover:text-ink px-3 py-2">Cancel</button>
+      <button type="button" id="confirm-modal-confirm-btn" class="text-sm text-white px-4 py-2 rounded bg-rust hover:opacity-90 transition-opacity">Delete</button>
+    </div>
+  </div>
+</div>
+
+<script>
+  let _confirmModalForm = null;
+  let _confirmModalExpectedText = null;
+  let _confirmModalInfoOnly = false;
+
+  function openConfirmModal(form, opts) {
+    opts = opts || {};
+    _confirmModalForm = form;
+    _confirmModalExpectedText = opts.expectedText || null;
+    _confirmModalInfoOnly = false;
+
+    document.getElementById('confirm-modal-title').textContent = opts.title || 'Are you sure?';
+    document.getElementById('confirm-modal-message').textContent = opts.message || "This can't be undone.";
+    document.getElementById('confirm-modal-confirm-btn').textContent = opts.confirmLabel || 'Delete';
+    document.getElementById('confirm-modal-confirm-btn').className = 'text-sm text-white px-4 py-2 rounded bg-rust hover:opacity-90 transition-opacity';
+    document.getElementById('confirm-modal-cancel-btn').classList.remove('hidden');
+    document.getElementById('confirm-modal-error').classList.add('hidden');
+
+    const inputWrap = document.getElementById('confirm-modal-input-wrap');
+    const input = document.getElementById('confirm-modal-input');
+    if (_confirmModalExpectedText !== null) {
+      inputWrap.classList.remove('hidden');
+      input.value = '';
+      setTimeout(() => input.focus(), 50);
+    } else {
+      inputWrap.classList.add('hidden');
+    }
+
+    document.getElementById('confirm-modal-backdrop').classList.remove('hidden');
+  }
+
+  function openInfoModal(title, message) {
+    _confirmModalForm = null;
+    _confirmModalExpectedText = null;
+    _confirmModalInfoOnly = true;
+
+    document.getElementById('confirm-modal-title').textContent = title || 'Note';
+    document.getElementById('confirm-modal-message').textContent = message || '';
+    document.getElementById('confirm-modal-confirm-btn').textContent = 'OK';
+    document.getElementById('confirm-modal-confirm-btn').className = 'text-sm text-white px-4 py-2 rounded bg-accent hover:bg-accentdeep transition-colors';
+    document.getElementById('confirm-modal-cancel-btn').classList.add('hidden');
+    document.getElementById('confirm-modal-input-wrap').classList.add('hidden');
+    document.getElementById('confirm-modal-error').classList.add('hidden');
+
+    document.getElementById('confirm-modal-backdrop').classList.remove('hidden');
+  }
+
+  function closeConfirmModal() {
+    document.getElementById('confirm-modal-backdrop').classList.add('hidden');
+    _confirmModalForm = null;
+    _confirmModalExpectedText = null;
+    _confirmModalInfoOnly = false;
+  }
+
+  document.addEventListener('DOMContentLoaded', () => {
+    const confirmBtn = document.getElementById('confirm-modal-confirm-btn');
+    if (!confirmBtn) return;
+    confirmBtn.addEventListener('click', () => {
+      if (_confirmModalInfoOnly) {
+        closeConfirmModal();
+        return;
+      }
+      if (!_confirmModalForm) return;
+      if (_confirmModalExpectedText !== null) {
+        const typed = document.getElementById('confirm-modal-input').value;
+        if (typed !== _confirmModalExpectedText) {
+          const err = document.getElementById('confirm-modal-error');
+          err.textContent = "That doesn't match — try again.";
+          err.classList.remove('hidden');
+          return;
+        }
+        const hiddenField = _confirmModalForm.querySelector('.confirm-name-field');
+        if (hiddenField) hiddenField.value = typed;
+      }
+      const formToSubmit = _confirmModalForm;
+      closeConfirmModal();
+      formToSubmit.submit();
+    });
+    document.getElementById('confirm-modal-backdrop').addEventListener('click', (e) => {
+      if (e.target.id === 'confirm-modal-backdrop') closeConfirmModal();
+    });
+  });
+</script>
+
+{% if user %}
+<script>
+  (function() {
+    const sidebar = document.getElementById('sidebar');
+    const toggle = document.getElementById('sidebar-toggle');
+    const KEY = 'hhb-sidebar-collapsed';
+    if (localStorage.getItem(KEY) === 'true') {
+      sidebar.classList.add('collapsed');
+    }
+    toggle.addEventListener('click', () => {
+      sidebar.classList.toggle('collapsed');
+      localStorage.setItem(KEY, sidebar.classList.contains('collapsed'));
+    });
+
+    const bizToggle = document.getElementById('biz-switcher-toggle');
+    const bizMenu = document.getElementById('biz-switcher-menu');
+    if (bizToggle && bizMenu) {
+      bizToggle.addEventListener('click', () => bizMenu.classList.toggle('hidden'));
+      document.addEventListener('click', (e) => {
+        if (!bizMenu.contains(e.target) && e.target !== bizToggle && !bizToggle.contains(e.target)) {
+          bizMenu.classList.add('hidden');
+        }
+      });
+    }
+  })();
+</script>
+{% endif %}
+
+</body>
+</html>

@@ -1,0 +1,76 @@
+{% extends "base.html" %}
+{% block title %}Contacts | {{ business_name() }}{% endblock %}
+{% block content %}
+
+<div class="flex items-end justify-between mb-8">
+  <h1 class="font-display text-3xl font-semibold text-ink">Contacts</h1>
+  {% if user.role in ['owner', 'bookkeeper'] %}
+  <a href="/contacts/new" class="bg-accent text-white text-sm font-medium px-4 py-2.5 rounded hover:bg-accentdeep transition-colors">+ Create contact</a>
+  {% endif %}
+</div>
+
+<form method="get" action="/contacts" class="flex flex-wrap items-end gap-3 mb-6 bg-papercard border border-line rounded-lg p-4">
+  <div class="flex-1 min-w-[200px]">
+    <label class="block text-xs uppercase tracking-wide text-ink/50 mb-1.5"><strong>Search by name</strong></label>
+    <input type="text" name="q" value="{{ q }}" placeholder="Search contacts…"
+      class="w-full border border-line rounded px-3 py-2 bg-white text-ink text-sm" />
+  </div>
+  <div>
+    <label class="block text-xs uppercase tracking-wide text-ink/50 mb-1.5"><strong>Type</strong></label>
+    <select name="type" class="border border-line rounded px-3 py-2 bg-white text-ink text-sm">
+      <option value="all" {% if selected_type == 'all' %}selected{% endif %}>All contacts</option>
+      <option value="customer" {% if selected_type == 'customer' %}selected{% endif %}>Customers</option>
+      <option value="supplier" {% if selected_type == 'supplier' %}selected{% endif %}>Suppliers</option>
+    </select>
+  </div>
+  <button type="submit" class="border border-accent text-accent text-sm font-medium px-4 py-2 rounded hover:bg-accentlight/30">Apply</button>
+  {% if q or selected_type != 'all' %}
+  <a href="/contacts" class="text-sm text-ink/50 hover:text-ink px-2 py-2">Clear filters</a>
+  {% endif %}
+</form>
+
+{% if contacts %}
+<div class="bg-papercard border border-line rounded-lg overflow-hidden mb-4">
+  <table class="w-full text-sm">
+    <thead>
+      <tr class="border-b border-line text-left text-xs uppercase tracking-wide text-ink/40">
+        <th class="px-5 py-3 font-medium"><strong>Name</strong></th>
+        <th class="px-5 py-3 font-medium"><strong>Type</strong></th>
+        <th class="px-5 py-3 font-medium"><strong>Email</strong></th>
+        <th class="px-5 py-3 font-medium"><strong>Phone</strong></th>
+      </tr>
+    </thead>
+    <tbody class="divide-y divide-line">
+      {% for c in contacts %}
+      <tr class="hover:bg-white transition-colors cursor-pointer" onclick="window.location='/contacts/{{ c.id }}'">
+        <td class="px-5 py-4 font-medium">{{ c.display_name }}</td>
+        <td class="px-5 py-4">
+          <span class="text-xs uppercase tracking-wide {% if c.contact_type == 'customer' %}text-brass{% else %}text-rust{% endif %}">{{ c.contact_type }}</span>
+        </td>
+        <td class="px-5 py-4 text-ink/60">{{ c.email or "—" }}</td>
+        <td class="px-5 py-4 text-ink/60">{{ c.phone or "—" }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+<div class="flex items-center justify-between text-sm text-ink/50">
+  <span>{{ total }} contact{{ 's' if total != 1 else '' }} — page {{ page }} of {{ total_pages }}</span>
+  <div class="flex gap-2">
+    {% if page > 1 %}
+    <a href="/contacts?page={{ page - 1 }}&q={{ q }}&type={{ selected_type }}" class="border border-line rounded px-3 py-1.5 hover:bg-white">← Previous</a>
+    {% endif %}
+    {% if page < total_pages %}
+    <a href="/contacts?page={{ page + 1 }}&q={{ q }}&type={{ selected_type }}" class="border border-line rounded px-3 py-1.5 hover:bg-white">Next →</a>
+    {% endif %}
+  </div>
+</div>
+
+{% else %}
+<div class="bg-papercard border border-dashed border-line rounded-lg px-4 py-16 text-center text-sm text-ink/40">
+  {% if q or selected_type != 'all' %}No contacts match this filter.{% else %}No contacts yet. {% if user.role in ['owner', 'bookkeeper'] %}<a href="/contacts/new" class="text-accent underline">Create your first contact →</a>{% endif %}{% endif %}
+</div>
+{% endif %}
+
+{% endblock %}

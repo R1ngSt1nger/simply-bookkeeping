@@ -1,0 +1,69 @@
+{# Expects: payments (list of payment objects or empty), payment_methods (list of name strings),
+   today (ISO date string).
+   Optional: payments_heading (default "Payments received"), amount_label (default "Amount received") #}
+<div class="bg-papercard border border-line rounded-lg p-5">
+  <div class="flex items-center justify-between mb-3">
+    <label class="text-xs uppercase tracking-wide text-ink/50"><strong>{{ payments_heading | default("Payments received") }}</strong></label>
+  </div>
+
+  <div id="payment-rows" class="space-y-2 mb-3">
+    {% for p in payments %}
+    <div class="payment-row flex items-center gap-3">
+      <input type="date" name="payment_date" required value="{{ p.date.isoformat() }}" onchange="recalc()"
+        class="border border-line rounded px-3 py-1.5 bg-white text-sm w-40" />
+      <input type="number" step="0.01" name="payment_amount" required value="{{ p.amount }}" oninput="recalc()"
+        class="payment-amount-input num flex-1 border border-line rounded px-3 py-1.5 bg-white text-sm text-right" />
+      <select name="payment_method" class="border border-line rounded px-3 py-1.5 bg-white text-sm w-36">
+        {% if p.method not in payment_methods %}
+        <option value="{{ p.method }}" selected>{{ p.method }} (removed)</option>
+        {% endif %}
+        {% for m in payment_methods %}
+        <option value="{{ m }}" {% if p.method == m %}selected{% endif %}>{{ m }}</option>
+        {% endfor %}
+      </select>
+      <button type="button" onclick="removePayment(this)" class="text-ink/30 hover:text-rust text-lg leading-none px-1">&times;</button>
+    </div>
+    {% endfor %}
+  </div>
+
+  <button type="button" onclick="addPayment()" class="text-sm text-ink/60 hover:text-ink border border-line rounded px-3 py-1.5 bg-white">+ Add payment</button>
+
+  <div class="grid grid-cols-2 gap-5 items-end pt-4 mt-4 border-t border-line">
+    <div>
+      <p class="text-xs uppercase tracking-wide text-ink/50 mb-1.5"><strong>{{ amount_label | default("Amount received") }}</strong></p>
+      <p id="received-display" class="num text-lg text-ink/70">$0.00</p>
+    </div>
+    <div class="text-right">
+      <p class="text-xs uppercase tracking-wide text-ink/50 mb-1.5"><strong>Balance due</strong></p>
+      <p id="balance-display" class="num text-xl font-semibold text-ink">$0.00</p>
+    </div>
+  </div>
+</div>
+
+<template id="payment-template">
+  <div class="payment-row flex items-center gap-3">
+    <input type="date" name="payment_date" required value="{{ today }}" onchange="recalc()"
+      class="border border-line rounded px-3 py-1.5 bg-white text-sm w-40" />
+    <input type="number" step="0.01" name="payment_amount" required value="0.00" oninput="recalc()"
+      class="payment-amount-input num flex-1 border border-line rounded px-3 py-1.5 bg-white text-sm text-right" />
+    <select name="payment_method" class="border border-line rounded px-3 py-1.5 bg-white text-sm w-36">
+      {% for m in payment_methods %}
+      <option value="{{ m }}">{{ m }}</option>
+      {% endfor %}
+    </select>
+    <button type="button" onclick="removePayment(this)" class="text-ink/30 hover:text-rust text-lg leading-none px-1">&times;</button>
+  </div>
+</template>
+
+<script>
+  function addPayment() {
+    const tpl = document.getElementById('payment-template');
+    const clone = tpl.content.cloneNode(true);
+    document.getElementById('payment-rows').appendChild(clone);
+    recalc();
+  }
+  function removePayment(btn) {
+    btn.closest('.payment-row').remove();
+    recalc();
+  }
+</script>

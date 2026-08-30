@@ -1,0 +1,11 @@
+services:
+  simply-bookkeeping:
+    image: ghcr.io/r1ngst1nger/simply-bookkeeping:latest
+    container_name: simply-bookkeeping
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    environment:
+      - TZ=Australia/Melbourne
+    volumes:
+      - ./data:/data

@@ -1,0 +1,239 @@
+{% extends "base.html" %}
+{% block title %}Dashboard | {{ business_name() }}{% endblock %}
+
+{% block extra_head %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+{% endblock %}
+
+{% block content %}
+
+<p class="text-sm text-ink/50 mb-1">{{ greeting_word }}, {{ business_name() }}</p>
+<div class="flex items-end justify-between mb-8">
+  <h1 class="font-display text-3xl font-semibold text-ink">Your business overview</h1>
+  {% if user.role in ['owner', 'bookkeeper'] %}
+  <div class="flex gap-3">
+    <a href="/income/new" class="bg-accent text-white text-sm font-medium px-4 py-2.5 rounded hover:bg-accentdeep transition-colors">+ Record income</a>
+    <a href="/expenses/new" class="bg-white border border-accent text-accent text-sm font-medium px-4 py-2.5 rounded hover:bg-accentlight/30 transition-colors">+ Record expense</a>
+  </div>
+  {% endif %}
+</div>
+
+<div class="grid grid-cols-3 gap-5 mb-10">
+
+  <!-- Income card -->
+  <div class="bg-papercard border border-line rounded-lg p-6">
+    <div class="flex items-center justify-between mb-1">
+      <p class="text-xs uppercase tracking-wide text-ink/40">Income</p>
+      <div class="flex gap-1" data-range-group="income">
+        <button type="button" data-range="1" class="range-btn text-xs px-2 py-0.5 rounded-full border border-line text-ink/50 hover:text-ink">This month</button>
+        <button type="button" data-range="3" class="range-btn text-xs px-2 py-0.5 rounded-full border border-line text-ink/50 hover:text-ink">Last 3mo</button>
+        <button type="button" data-range="6" class="range-btn text-xs px-2 py-0.5 rounded-full border border-line text-ink/50 hover:text-ink">Last 6mo</button>
+      </div>
+    </div>
+    <p id="income-total" class="num text-3xl font-semibold text-brass mb-1">$0.00</p>
+    <p id="income-caption" class="text-xs text-ink/40 mb-3">last 3 months</p>
+    <div class="h-40"><canvas id="incomeChart"></canvas></div>
+    <div class="flex gap-4 mt-3 text-xs text-ink/50">
+      <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full inline-block" style="background:#CDEEDC"></span>Last year</span>
+      <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full inline-block" style="background:#1E9E6B"></span>This year</span>
+    </div>
+  </div>
+
+  <!-- Expenses card -->
+  <div class="bg-papercard border border-line rounded-lg p-6">
+    <div class="flex items-center justify-between mb-1">
+      <p class="text-xs uppercase tracking-wide text-ink/40">Expenses</p>
+      <div class="flex gap-1" data-range-group="expense">
+        <button type="button" data-range="1" class="range-btn text-xs px-2 py-0.5 rounded-full border border-line text-ink/50 hover:text-ink">This month</button>
+        <button type="button" data-range="3" class="range-btn text-xs px-2 py-0.5 rounded-full border border-line text-ink/50 hover:text-ink">Last 3mo</button>
+        <button type="button" data-range="6" class="range-btn text-xs px-2 py-0.5 rounded-full border border-line text-ink/50 hover:text-ink">Last 6mo</button>
+      </div>
+    </div>
+    <p id="expense-total" class="num text-3xl font-semibold text-rust mb-1">$0.00</p>
+    <p id="expense-caption" class="text-xs text-ink/40 mb-3">last 3 months</p>
+    <div class="h-40"><canvas id="expenseChart"></canvas></div>
+    <div class="flex gap-4 mt-3 text-xs text-ink/50">
+      <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full inline-block" style="background:#F6D9D2"></span>Last year</span>
+      <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full inline-block" style="background:#D1493C"></span>This year</span>
+    </div>
+  </div>
+
+  <!-- Financial position card -->
+  <div class="bg-papercard border border-line rounded-lg p-6">
+    <p class="text-xs uppercase tracking-wide text-ink/40 mb-1">Financial position</p>
+    <p class="num text-3xl font-semibold text-ink mb-1">{{ position_chart.net_total | money }}</p>
+    <p class="text-xs text-ink/40 mb-3">this financial year</p>
+    <div class="h-40"><canvas id="positionChart"></canvas></div>
+    <div class="flex gap-3 mt-3 text-xs text-ink/50 flex-wrap">
+      <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full inline-block" style="background:#1E9E6B"></span>Income</span>
+      <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full inline-block" style="background:#D1493C"></span>Expense</span>
+      <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full inline-block" style="background:{{ theme.ink }}"></span>Net profit</span>
+    </div>
+  </div>
+
+</div>
+
+<div class="grid grid-cols-2 gap-8">
+  <div>
+    <div class="flex items-center justify-between mb-3">
+      <h2 class="font-display text-lg font-semibold text-ink">Recent income</h2>
+      <a href="/income" class="text-sm text-ink/50 hover:text-ink">View all →</a>
+    </div>
+    {% if recent_income %}
+    <div class="bg-papercard border border-line rounded-lg divide-y divide-line">
+      {% for t in recent_income %}
+      <a href="/income/{{ t.id }}/edit" class="flex items-center justify-between px-4 py-3 hover:bg-white transition-colors">
+        <div>
+          {% if t.contact %}
+          <p class="text-sm font-medium text-ink">{{ t.contact.display_name }}</p>
+          <p class="text-xs text-ink/40">{{ t.date.strftime('%d %b %Y') }}{% if t.reference %} · {{ t.reference }}{% endif %}</p>
+          {% else %}
+          <p class="text-sm font-medium text-ink">{{ t.date.strftime('%d %b %Y') }}{% if t.reference %} · {{ t.reference }}{% endif %}</p>
+          {% endif %}
+        </div>
+        <p class="num text-sm font-semibold text-brass">{{ t.total | money }}</p>
+      </a>
+      {% endfor %}
+    </div>
+    {% else %}
+    <div class="bg-papercard border border-dashed border-line rounded-lg px-4 py-8 text-center text-sm text-ink/40">
+      No income recorded yet.
+    </div>
+    {% endif %}
+  </div>
+
+  <div>
+    <div class="flex items-center justify-between mb-3">
+      <h2 class="font-display text-lg font-semibold text-ink">Recent expenses</h2>
+      <a href="/expenses" class="text-sm text-ink/50 hover:text-ink">View all →</a>
+    </div>
+    {% if recent_expenses %}
+    <div class="bg-papercard border border-line rounded-lg divide-y divide-line">
+      {% for e in recent_expenses %}
+      <a href="/expenses/{{ e.id }}/edit" class="flex items-center justify-between px-4 py-3 hover:bg-white transition-colors">
+        <div>
+          <p class="text-sm font-medium text-ink">{{ e.contact.display_name if e.contact else "Expense" }}</p>
+          <p class="text-xs text-ink/40">{{ e.date.strftime('%d %b %Y') }}{% if e.invoice_number %} · #{{ e.invoice_number }}{% endif %}</p>
+        </div>
+        <p class="num text-sm font-semibold text-rust">{{ e.total | money }}</p>
+      </a>
+      {% endfor %}
+    </div>
+    {% else %}
+    <div class="bg-papercard border border-dashed border-line rounded-lg px-4 py-8 text-center text-sm text-ink/40">
+      No expenses recorded yet.
+    </div>
+    {% endif %}
+  </div>
+</div>
+
+<script>
+const incomeCharts = {{ income_charts | tojson | safe }};
+const expenseCharts = {{ expense_charts | tojson | safe }};
+const positionChart = {{ position_chart | tojson | safe }};
+const RANGE_CAPTIONS = {"1": "this month", "3": "last 3 months", "6": "last 6 months"};
+
+function money(v) {
+  const neg = v < 0;
+  const formatted = Math.abs(v).toLocaleString('en-AU', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+  return (neg ? '-$' : '$') + formatted;
+}
+
+function barOptions() {
+  return {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: { legend: { display: false }, tooltip: { callbacks: { label: (ctx) => money(ctx.parsed.y) } } },
+    scales: {
+      x: { grid: { display: false } },
+      y: { beginAtZero: true, ticks: { callback: (v) => '$' + v.toLocaleString() } }
+    }
+  };
+}
+
+const incomeCtx = document.getElementById('incomeChart');
+const incomeChartInstance = new Chart(incomeCtx, {
+  type: 'bar',
+  data: {
+    labels: incomeCharts['3'].labels,
+    datasets: [
+      { label: 'Last year', data: incomeCharts['3'].last_year, backgroundColor: '#CDEEDC', borderRadius: 3, maxBarThickness: 28 },
+      { label: 'This year', data: incomeCharts['3'].this_year, backgroundColor: '#1E9E6B', borderRadius: 3, maxBarThickness: 28 },
+    ]
+  },
+  options: barOptions()
+});
+
+const expenseCtx = document.getElementById('expenseChart');
+const expenseChartInstance = new Chart(expenseCtx, {
+  type: 'bar',
+  data: {
+    labels: expenseCharts['3'].labels,
+    datasets: [
+      { label: 'Last year', data: expenseCharts['3'].last_year, backgroundColor: '#F6D9D2', borderRadius: 3, maxBarThickness: 28 },
+      { label: 'This year', data: expenseCharts['3'].this_year, backgroundColor: '#D1493C', borderRadius: 3, maxBarThickness: 28 },
+    ]
+  },
+  options: barOptions()
+});
+
+const positionCtx = document.getElementById('positionChart');
+new Chart(positionCtx, {
+  type: 'line',
+  data: {
+    labels: positionChart.labels,
+    datasets: [
+      { label: 'Income', data: positionChart.income, borderColor: '#1E9E6B', backgroundColor: '#1E9E6B', tension: 0.3, pointRadius: 3 },
+      { label: 'Expense', data: positionChart.expense, borderColor: '#D1493C', backgroundColor: '#D1493C', tension: 0.3, pointRadius: 3 },
+      { label: 'Net profit', data: positionChart.net, borderColor: '{{ theme.ink }}', backgroundColor: '{{ theme.ink }}', tension: 0.3, pointRadius: 3, borderWidth: 2.5 },
+    ]
+  },
+  options: {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: { legend: { display: false }, tooltip: { callbacks: { label: (ctx) => ctx.dataset.label + ': ' + money(ctx.parsed.y) } } },
+    scales: {
+      x: { grid: { display: false } },
+      y: { ticks: { callback: (v) => '$' + v.toLocaleString() } }
+    }
+  }
+});
+
+function setActiveButton(group, range) {
+  document.querySelectorAll(`[data-range-group="${group}"] .range-btn`).forEach(btn => {
+    if (btn.dataset.range === range) {
+      btn.classList.add('bg-accent', 'text-white', 'border-accent');
+      btn.classList.remove('text-ink/50');
+    } else {
+      btn.classList.remove('bg-accent', 'text-white', 'border-accent');
+      btn.classList.add('text-ink/50');
+    }
+  });
+}
+
+function switchRange(group, range) {
+  const dataSource = group === 'income' ? incomeCharts : expenseCharts;
+  const chartInstance = group === 'income' ? incomeChartInstance : expenseChartInstance;
+  const data = dataSource[range];
+  chartInstance.data.labels = data.labels;
+  chartInstance.data.datasets[0].data = data.last_year;
+  chartInstance.data.datasets[1].data = data.this_year;
+  chartInstance.update();
+  document.getElementById(`${group}-total`).textContent = money(data.total);
+  document.getElementById(`${group}-caption`).textContent = RANGE_CAPTIONS[range];
+  setActiveButton(group, range);
+}
+
+document.querySelectorAll('.range-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    const group = btn.closest('[data-range-group]').dataset.rangeGroup;
+    switchRange(group, btn.dataset.range);
+  });
+});
+
+// Default both to "last 3 months"
+switchRange('income', '3');
+switchRange('expense', '3');
+</script>
+
+{% endblock %}

@@ -1,0 +1,82 @@
+{% extends "base.html" %}
+{% block title %}Income | {{ business_name() }}{% endblock %}
+{% block content %}
+
+<div class="flex items-end justify-between mb-8">
+  <h1 class="font-display text-3xl font-semibold text-ink">Income</h1>
+  {% if user.role in ['owner', 'bookkeeper'] %}
+  <a href="/income/new" class="bg-accent text-white text-sm font-medium px-4 py-2.5 rounded hover:bg-accentdeep transition-colors">+ Record income</a>
+  {% endif %}
+</div>
+
+<form method="get" action="/income" class="flex flex-wrap items-end gap-3 mb-6 bg-papercard border border-line rounded-lg p-4">
+  <div>
+    <label class="block text-xs uppercase tracking-wide text-ink/50 mb-1.5"><strong>Date range</strong></label>
+    <select name="range" id="range-select" onchange="toggleCustomRange()" class="border border-line rounded px-3 py-2 bg-white text-ink text-sm">
+      {% for key, label in range_labels.items() %}
+      <option value="{{ key }}" {% if selected_range == key %}selected{% endif %}>{{ label }}</option>
+      {% endfor %}
+    </select>
+  </div>
+  <div id="custom-range-fields" class="flex items-end gap-3 {% if selected_range != 'custom' %}hidden{% endif %}">
+    <div>
+      <label class="block text-xs uppercase tracking-wide text-ink/50 mb-1.5"><strong>From</strong></label>
+      <input type="date" name="custom_start" value="{{ custom_start }}" class="border border-line rounded px-3 py-2 bg-white text-ink text-sm" />
+    </div>
+    <div>
+      <label class="block text-xs uppercase tracking-wide text-ink/50 mb-1.5"><strong>To</strong></label>
+      <input type="date" name="custom_end" value="{{ custom_end }}" class="border border-line rounded px-3 py-2 bg-white text-ink text-sm" />
+    </div>
+  </div>
+  <div>
+    <label class="block text-xs uppercase tracking-wide text-ink/50 mb-1.5"><strong>Customer</strong></label>
+    <input type="text" name="customer" value="{{ customer_query }}" placeholder="Search by customer"
+      class="border border-line rounded px-3 py-2 bg-white text-ink text-sm" />
+  </div>
+  <button type="submit" class="border border-accent text-accent text-sm font-medium px-4 py-2 rounded hover:bg-accentlight/30">Apply</button>
+  {% if (selected_range and selected_range != 'all') or customer_query %}
+  <a href="/income" class="text-sm text-ink/50 hover:text-ink px-2 py-2">Clear filters</a>
+  {% endif %}
+</form>
+
+{% if transactions %}
+<div class="bg-papercard border border-line rounded-lg overflow-hidden">
+  <table class="w-full text-sm">
+    <thead>
+      <tr class="border-b border-line text-left text-xs uppercase tracking-wide text-ink/40">
+        <th class="px-5 py-3 font-medium"><strong>Date</strong></th>
+        <th class="px-5 py-3 font-medium"><strong>Customer</strong></th>
+        <th class="px-5 py-3 font-medium"><strong>Reference</strong></th>
+        <th class="px-5 py-3 font-medium text-right"><strong>Amount</strong></th>
+        <th class="px-5 py-3 font-medium text-right"><strong>Balance due</strong></th>
+      </tr>
+    </thead>
+    <tbody class="divide-y divide-line">
+      {% for t in transactions %}
+      <tr class="hover:bg-white transition-colors cursor-pointer" onclick="window.location='/income/{{ t.id }}/edit'">
+        <td class="px-5 py-4 whitespace-nowrap">{{ t.date.strftime('%d %b %Y') }}</td>
+        <td class="px-5 py-4 font-medium">
+          {% if t.contact %}<a href="/contacts/{{ t.contact.id }}" class="text-brass hover:underline" onclick="event.stopPropagation()">{{ t.contact.display_name }}</a>{% else %}<span class="text-ink/30">—</span>{% endif %}
+        </td>
+        <td class="px-5 py-4">{{ t.reference or "—" }}</td>
+        <td class="px-5 py-4 text-right num font-semibold text-brass whitespace-nowrap">{{ t.total | money }}</td>
+        <td class="px-5 py-4 text-right num whitespace-nowrap {% if t.balance_due > 0 %}text-rust font-medium{% else %}text-ink/40{% endif %}">{{ t.balance_due | money }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% else %}
+<div class="bg-papercard border border-dashed border-line rounded-lg px-4 py-16 text-center text-sm text-ink/40">
+  {% if (selected_range and selected_range != 'all') or customer_query %}No income matches this filter.{% else %}No income recorded yet. {% if user.role in ['owner', 'bookkeeper'] %}<a href="/income/new" class="text-accent underline">Record your first income →</a>{% endif %}{% endif %}
+</div>
+{% endif %}
+
+<script>
+  function toggleCustomRange() {
+    const select = document.getElementById('range-select');
+    document.getElementById('custom-range-fields').classList.toggle('hidden', select.value !== 'custom');
+  }
+</script>
+
+{% endblock %}

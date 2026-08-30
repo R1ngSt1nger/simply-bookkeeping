@@ -1,0 +1,59 @@
+{% extends "base.html" %}
+{% block title %}Login | Simply Bookkeeping{% endblock %}
+{% block content %}
+<div class="min-h-[70vh] flex items-center justify-center">
+  <div class="w-full max-w-sm">
+    <div class="text-center mb-8">
+      <div class="inline-block mb-3">
+        <img src="/static/img/simply-bookkeeping-logo.png" alt="Simply Bookkeeping" class="h-16 w-auto mx-auto" />
+      </div>
+      <p class="text-ink/50 text-sm mt-1">Your simplified bookkeeping solution.</p>
+    </div>
+
+    <form method="post" action="/login" class="bg-papercard border border-line rounded-lg p-8 space-y-5">
+      {% if success %}
+      <div class="text-sm text-accent bg-accentlight/40 border border-accent/30 rounded px-3 py-2">{{ success }}</div>
+      {% endif %}
+      {% if error %}
+      <div class="text-sm text-rust bg-rustlight/40 border border-rust/30 rounded px-3 py-2">{{ error }}</div>
+      {% endif %}
+
+      {% if sso_enabled %}
+      <a href="/auth/sso/login" class="w-full flex items-center justify-center gap-2 border border-accent text-accent rounded py-2.5 font-medium hover:bg-accentlight/30 transition-colors">
+        {{ sso_button_text }}
+      </a>
+      <div class="flex items-center gap-3 text-xs text-ink/30 uppercase tracking-wide">
+        <div class="flex-1 border-t border-line"></div>
+        or
+        <div class="flex-1 border-t border-line"></div>
+      </div>
+      {% endif %}
+
+      <div>
+        <label class="block text-xs uppercase tracking-wide text-ink/50 mb-1.5"><strong>Username</strong></label>
+        <input name="username" type="text" required autofocus
+          class="w-full border border-line rounded px-3 py-2 bg-white text-ink" />
+      </div>
+      <div>
+        <label class="block text-xs uppercase tracking-wide text-ink/50 mb-1.5"><strong>Password</strong></label>
+        <input name="password" type="password" required
+          class="w-full border border-line rounded px-3 py-2 bg-white text-ink" />
+      </div>
+      <button type="submit" class="w-full bg-accent text-white rounded py-2.5 font-medium hover:bg-accentdeep transition-colors">
+        Log in
+      </button>
+      <p class="text-center">
+        <a href="/forgot-password" class="text-xs text-ink/50 hover:text-ink underline decoration-line underline-offset-4">Forgot your password?</a>
+      </p>
+    </form>
+  </div>
+</div>
+
+{% if request.query_params.get('error') == 'smtp_not_configured' %}
+<script>
+  document.addEventListener('DOMContentLoaded', () => {
+    openInfoModal('Password reset isn\'t set up yet', 'The app owner needs to configure an SMTP email server in Settings before password reset emails can be sent. If you are the owner, go to Settings → SMTP Server Details.');
+  });
+</script>
+{% endif %}
+{% endblock %}
