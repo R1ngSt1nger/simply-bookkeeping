@@ -22,6 +22,7 @@ There's no Payroll, GST, BAS or any other bloat which many small businesses don'
 * Track payments and outstanding balances
 * Attach invoices, receipts and other documentation
 * Use the Uploads holding area to keep documents ready to be matched to expense records
+* OCR will attempt to extract information from uploaded invoices in the holding area
 
 ### 
 
