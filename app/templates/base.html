@@ -71,16 +71,17 @@
       bottom: 0;
       left: 0;
       z-index: 40;
-      width: 17rem;
-      max-width: 82vw;
+      width: 15rem;
+      max-width: 80vw;
       transform: translateX(-100%);
       transition: transform 0.2s ease;
     }
     #sidebar.mobile-open { transform: translateX(0); }
-    #sidebar.collapsed { width: 17rem; } /* the desktop icon-only collapse doesn't apply on mobile */
+    #sidebar.collapsed { width: 15rem; } /* the desktop icon-only collapse doesn't apply on mobile */
     #sidebar.collapsed .sidebar-label,
     #sidebar.collapsed .sidebar-brand-text,
     #sidebar.collapsed .sidebar-user-text { display: revert; }
+    #sidebar.collapsed .sidebar-link { justify-content: flex-start; }
     #sidebar.collapsed .app-logo { display: flex; }
     #sidebar-backdrop.mobile-open { display: block; }
   }
