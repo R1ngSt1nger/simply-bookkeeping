@@ -60,14 +60,25 @@ def list_expenses(
 @router.get("/new", response_class=HTMLResponse)
 def new_expense_form(request: Request, upload_id: Optional[int] = None, db: Session = Depends(get_db), user=Depends(require_write)):
     pending_upload = None
+    ocr_prefill = None
     if upload_id:
         pending_upload = db.query(models.UploadedFile).filter(models.UploadedFile.id == upload_id).first()
+        if pending_upload and pending_upload.ocr_processed:
+            from .. import ocr
+            ocr_prefill = {
+                "date": pending_upload.ocr_date.isoformat() if pending_upload.ocr_date else None,
+                "invoice_number": pending_upload.ocr_invoice_number,
+                "contact_id": pending_upload.ocr_supplier_contact_id,
+                "line_items": ocr.line_items_from_json(pending_upload.ocr_line_items_json),
+            }
+    selected_contact = pending_upload.ocr_supplier_contact if (pending_upload and pending_upload.ocr_processed) else None
     return render(request, "expense_form.html", {
         "request": request, "user": user, "expense": None,
         "today": date.today().isoformat(), "pending_upload": pending_upload,
-        "contacts": _contacts_for_picker(db), "selected_contact": None,
+        "contacts": _contacts_for_picker(db), "selected_contact": selected_contact,
         "categories": _expense_categories(db), "error": None,
         "payment_methods": _payment_method_names(db), "can_write": True,
+        "ocr_prefill": ocr_prefill,
     })
 
 

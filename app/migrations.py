@@ -29,6 +29,7 @@ def run_migrations():
     ensure_column(control_engine, "app_settings", "smtp_from_email", "VARCHAR")
     ensure_column(control_engine, "app_settings", "smtp_from_name", "VARCHAR")
     ensure_column(control_engine, "users", "theme", "VARCHAR")  # per-user theme preference
+    ensure_column(control_engine, "users", "ocr_enabled", "BOOLEAN")  # NULL treated as enabled
 
     with ControlSessionLocal() as cdb:
         ensure_default_business(cdb)
@@ -47,6 +48,11 @@ def _run_per_business_migrations(engine):
     ensure_column(engine, "expense_categories", "category_type", "VARCHAR")
     ensure_column(engine, "income_transactions", "invoice_number", "VARCHAR")
     ensure_column(engine, "income_transactions", "invoice_due_date", "DATE")
+    ensure_column(engine, "uploaded_files", "ocr_processed", "BOOLEAN")
+    ensure_column(engine, "uploaded_files", "ocr_date", "DATE")
+    ensure_column(engine, "uploaded_files", "ocr_invoice_number", "VARCHAR")
+    ensure_column(engine, "uploaded_files", "ocr_supplier_contact_id", "INTEGER")
+    ensure_column(engine, "uploaded_files", "ocr_line_items_json", "TEXT")
 
     with engine.connect() as conn:
         conn.exec_driver_sql(

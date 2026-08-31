@@ -69,6 +69,18 @@ def settings_page(
     return render(request, "settings.html", _context(request, db, control_db, user, error=error, category_type=category_type, opened=opened))
 
 
+@router.post("/ocr")
+def update_ocr_preference(
+    request: Request, ocr_enabled: str = Form(None),
+    db: Session = Depends(get_db), control_db: Session = Depends(get_control_db),
+    user=Depends(require_write),
+):
+    target = control_db.query(control_models.User).filter(control_models.User.id == user.id).first()
+    target.ocr_enabled = bool(ocr_enabled)
+    control_db.commit()
+    return render(request, "settings.html", _context(request, db, control_db, target, success="OCR preference updated.", opened="ocr"))
+
+
 @router.post("/business-details")
 async def update_business_details(
     request: Request,

@@ -1,5 +1,5 @@
 from sqlalchemy import (
-    Column, Integer, String, Numeric, Date, DateTime, ForeignKey, Text
+    Column, Integer, String, Numeric, Date, DateTime, ForeignKey, Text, Boolean
 )
 from sqlalchemy.orm import relationship
 from datetime import datetime, timezone
@@ -175,6 +175,16 @@ class UploadedFile(Base):
     original_filename = Column(String, nullable=False)
     stored_filename = Column(String, nullable=False)  # filename within attachments/pending
     uploaded_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+
+    # Best-effort OCR guesses, used only to pre-fill the expense form — never
+    # saved as real data unless the user confirms by submitting the form.
+    ocr_processed = Column(Boolean, nullable=False, default=False)
+    ocr_date = Column(Date, nullable=True)
+    ocr_invoice_number = Column(String, nullable=True)
+    ocr_supplier_contact_id = Column(Integer, ForeignKey("contacts.id"), nullable=True)
+    ocr_line_items_json = Column(Text, nullable=True)
+
+    ocr_supplier_contact = relationship("Contact")
 
 
 class InvoiceCounter(Base):

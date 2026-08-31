@@ -14,6 +14,7 @@ class User(ControlBase):
     display_name = Column(String, nullable=True)
     email = Column(String, nullable=True)  # optional — used to match SSO identities
     theme = Column(String, nullable=True)  # each user's own colour theme preference
+    ocr_enabled = Column(Boolean, nullable=True)  # NULL/unset is treated as enabled (default on)
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
 

@@ -27,6 +27,9 @@
       {{ f.original_filename }}
     </a>
     <div class="flex items-center gap-3">
+      {% if f.ocr_processed %}
+      <span class="text-xs uppercase tracking-wide text-accent bg-accentlight/40 px-2 py-0.5 rounded-full" title="Some fields will be pre-filled when you assign this to an expense">OCR ready</span>
+      {% endif %}
       <span class="text-xs text-ink/30">{{ f.uploaded_at.strftime('%d %b %Y') }}</span>
       {% if user.role in ['owner', 'bookkeeper'] %}
       <a href="/expenses/new?upload_id={{ f.id }}" class="text-xs bg-accent text-white px-3 py-1.5 rounded hover:bg-accentdeep transition-colors">Assign to expense</a>

@@ -256,6 +256,37 @@
     </div>
   </details>
 
+  <!-- OCR for Pending Uploads -->
+  <details class="settings-section bg-papercard border border-line rounded-lg mb-4" {% if opened == 'ocr' %}open{% endif %}>
+    <summary class="flex items-center justify-between p-5">
+      <div class="flex items-center gap-2">
+        <h2 class="font-display text-lg font-semibold text-ink">OCR for Pending Uploads</h2>
+        {% set ocr_is_on = user.ocr_enabled is none or user.ocr_enabled %}
+        {% if ocr_is_on %}
+        <span class="text-xs uppercase tracking-wide text-accent bg-accentlight/40 px-2.5 py-1 rounded-full">Enabled</span>
+        {% else %}
+        <span class="text-xs uppercase tracking-wide text-ink/40 bg-white border border-line px-2.5 py-1 rounded-full">Disabled</span>
+        {% endif %}
+      </div>
+      <svg class="chevron shrink-0" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+    </summary>
+    <div class="px-5 pb-5">
+      <p class="text-xs text-ink/40 mb-4">
+        When you upload a document to the pending Uploads area, this reads the document and tries to guess
+        the date, invoice number, supplier, and line items — so "Assign to expense" starts partly filled in.
+        Nothing is ever saved without you reviewing and confirming it first. This is your own personal
+        preference — other logins can turn it on or off independently.
+      </p>
+      <form method="post" action="/settings/ocr">
+        <label class="flex items-center gap-2 text-sm">
+          <input type="checkbox" name="ocr_enabled" {% if ocr_is_on %}checked{% endif %} class="rounded border-line" />
+          Try to read pending uploads automatically
+        </label>
+        <button type="submit" class="mt-4 bg-accent text-white text-sm font-medium px-4 py-2 rounded hover:bg-accentdeep transition-colors">Save</button>
+      </form>
+    </div>
+  </details>
+
   {% if user.role == 'owner' %}
   <!-- Manage Logins -->
   <details class="settings-section bg-papercard border border-line rounded-lg mb-4" {% if opened == 'logins' %}open{% endif %}>

@@ -15,6 +15,9 @@
   {% if error %}
   <div class="text-sm text-rust bg-rustlight/40 border border-rust/30 rounded px-3 py-2 mb-6">{{ error }}</div>
   {% endif %}
+  {% if ocr_prefill %}
+  <div class="text-sm text-accent bg-accentlight/40 border border-accent/30 rounded px-3 py-2 mb-6">Pre-filled from the uploaded document using text recognition — double-check everything below before saving.</div>
+  {% endif %}
 
   <form method="post" action="{% if expense %}/expenses/{{ expense.id }}/edit{% else %}/expenses/new{% endif %}" enctype="multipart/form-data" class="space-y-6">
   <fieldset {% if not can_write %}disabled{% endif %} class="space-y-6 border-0 p-0 m-0">
@@ -22,12 +25,12 @@
     <div class="grid grid-cols-2 gap-5">
       <div>
         <label class="block text-xs uppercase tracking-wide text-ink/50 mb-1.5"><strong>Date</strong> <span class="text-rust">*</span></label>
-        <input type="date" name="exp_date" required value="{% if expense %}{{ expense.date.isoformat() }}{% else %}{{ today }}{% endif %}"
+        <input type="date" name="exp_date" required value="{% if expense %}{{ expense.date.isoformat() }}{% elif ocr_prefill and ocr_prefill.date %}{{ ocr_prefill.date }}{% else %}{{ today }}{% endif %}"
           class="w-full border border-line rounded px-3 py-2 bg-white text-ink" />
       </div>
       <div>
         <label class="block text-xs uppercase tracking-wide text-ink/50 mb-1.5"><strong>Invoice number</strong></label>
-        <input type="text" name="invoice_number" value="{% if expense %}{{ expense.invoice_number or '' }}{% endif %}"
+        <input type="text" name="invoice_number" value="{% if expense %}{{ expense.invoice_number or '' }}{% elif ocr_prefill and ocr_prefill.invoice_number %}{{ ocr_prefill.invoice_number }}{% endif %}"
           class="w-full border border-line rounded px-3 py-2 bg-white text-ink" />
       </div>
     </div>
@@ -49,6 +52,22 @@
               <option value="">Uncategorised</option>
               {% for c in categories %}
               <option value="{{ c.id }}" {% if li.category_id == c.id %}selected{% endif %}>{{ c.name }}</option>
+              {% endfor %}
+            </select>
+            <input type="number" step="0.01" name="line_amount" required value="{{ li.amount }}" oninput="recalc(); updateGhost(this)"
+              class="amt-input num w-32 border border-line rounded px-3 py-1.5 bg-white text-sm text-right" />
+            <button type="button" onclick="removeLine(this)" class="text-ink/30 hover:text-rust text-lg leading-none px-1">&times;</button>
+          </div>
+          {% endfor %}
+        {% elif ocr_prefill and ocr_prefill.line_items %}
+          {% for li in ocr_prefill.line_items %}
+          <div class="line-item flex items-center gap-3 px-4 py-3">
+            <input type="text" name="line_desc" required value="{{ li.description }}"
+              class="flex-1 border border-line rounded px-3 py-1.5 bg-white text-sm" />
+            <select name="line_category" class="border border-line rounded px-3 py-1.5 bg-white text-sm w-40">
+              <option value="">Uncategorised</option>
+              {% for c in categories %}
+              <option value="{{ c.id }}">{{ c.name }}</option>
               {% endfor %}
             </select>
             <input type="number" step="0.01" name="line_amount" required value="{{ li.amount }}" oninput="recalc(); updateGhost(this)"
