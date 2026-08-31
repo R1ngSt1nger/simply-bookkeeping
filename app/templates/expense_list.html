@@ -2,10 +2,10 @@
 {% block title %}Expenses | {{ business_name() }}{% endblock %}
 {% block content %}
 
-<div class="flex items-end justify-between mb-8">
-  <h1 class="font-display text-3xl font-semibold text-ink">Expenses</h1>
+<div class="flex flex-col gap-3 mb-8 sm:flex-row sm:items-end sm:justify-between">
+  <h1 class="font-display text-2xl md:text-3xl font-semibold text-ink">Expenses</h1>
   {% if user.role in ['owner', 'bookkeeper'] %}
-  <a href="/expenses/new" class="bg-accent text-white text-sm font-medium px-4 py-2.5 rounded hover:bg-accentdeep transition-colors">+ Record expense</a>
+  <a href="/expenses/new" class="inline-block text-center bg-accent text-white text-sm font-medium px-4 py-2.5 rounded hover:bg-accentdeep transition-colors">+ Record expense</a>
   {% endif %}
 </div>
 
@@ -40,7 +40,8 @@
 </form>
 
 {% if expenses %}
-<div class="bg-papercard border border-line rounded-lg overflow-hidden mb-4">
+<!-- Desktop table -->
+<div class="hidden md:block bg-papercard border border-line rounded-lg overflow-hidden mb-4">
   <table class="w-full text-sm">
     <thead>
       <tr class="border-b border-line text-left text-xs uppercase tracking-wide text-ink/40">
@@ -75,6 +76,34 @@
       {% endfor %}
     </tbody>
   </table>
+</div>
+
+<!-- Mobile card list -->
+<div class="md:hidden bg-papercard border border-line rounded-lg divide-y divide-line overflow-hidden mb-4">
+  {% for e in expenses %}
+  <div class="px-4 py-3.5 hover:bg-white transition-colors">
+    <a href="/expenses/{{ e.id }}/edit" class="block">
+      <div class="flex items-start justify-between gap-3 mb-1">
+        <p class="font-medium text-ink">
+          {% if e.contact %}{{ e.contact.display_name }}{% else %}<span class="text-ink/30">—</span>{% endif %}
+        </p>
+        <p class="num font-semibold text-rust whitespace-nowrap shrink-0">{{ e.total | money }}</p>
+      </div>
+      <div class="flex items-center justify-between gap-3 text-xs text-ink/50">
+        <p>{{ e.date.strftime('%d %b %Y') }}{% if e.invoice_number %} · #{{ e.invoice_number }}{% endif %}</p>
+        {% if e.balance_due > 0 %}
+        <p class="num text-rust font-medium whitespace-nowrap shrink-0">{{ e.balance_due | money }} due</p>
+        {% endif %}
+      </div>
+    </a>
+    {% if e.attachment_path %}
+    <a href="/attachments/{{ e.id }}" target="_blank" class="inline-flex items-center gap-1.5 text-xs text-ink/50 hover:text-ink mt-2">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>
+      View attachment
+    </a>
+    {% endif %}
+  </div>
+  {% endfor %}
 </div>
 {% else %}
 <div class="bg-papercard border border-dashed border-line rounded-lg px-4 py-16 text-center text-sm text-ink/40">

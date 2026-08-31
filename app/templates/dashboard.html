@@ -8,21 +8,21 @@
 {% block content %}
 
 <p class="text-sm text-ink/50 mb-1">{{ greeting_word }}, {{ business_name() }}</p>
-<div class="flex items-end justify-between mb-8">
-  <h1 class="font-display text-3xl font-semibold text-ink">Your business overview</h1>
+<div class="flex flex-col gap-4 mb-8 md:flex-row md:items-end md:justify-between">
+  <h1 class="font-display text-2xl md:text-3xl font-semibold text-ink">Your business overview</h1>
   {% if user.role in ['owner', 'bookkeeper'] %}
   <div class="flex gap-3">
-    <a href="/income/new" class="bg-accent text-white text-sm font-medium px-4 py-2.5 rounded hover:bg-accentdeep transition-colors">+ Record income</a>
-    <a href="/expenses/new" class="bg-white border border-accent text-accent text-sm font-medium px-4 py-2.5 rounded hover:bg-accentlight/30 transition-colors">+ Record expense</a>
+    <a href="/income/new" class="flex-1 md:flex-none text-center bg-accent text-white text-sm font-medium px-4 py-2.5 rounded hover:bg-accentdeep transition-colors">+ Record income</a>
+    <a href="/expenses/new" class="flex-1 md:flex-none text-center bg-white border border-accent text-accent text-sm font-medium px-4 py-2.5 rounded hover:bg-accentlight/30 transition-colors">+ Record expense</a>
   </div>
   {% endif %}
 </div>
 
-<div class="grid grid-cols-3 gap-5 mb-10">
+<div class="grid grid-cols-1 md:grid-cols-3 gap-5 mb-10">
 
   <!-- Income card -->
   <div class="bg-papercard border border-line rounded-lg p-6">
-    <div class="flex items-center justify-between mb-1">
+    <div class="flex items-center justify-between mb-1 flex-wrap gap-y-2">
       <p class="text-xs uppercase tracking-wide text-ink/40">Income</p>
       <div class="flex gap-1" data-range-group="income">
         <button type="button" data-range="1" class="range-btn text-xs px-2 py-0.5 rounded-full border border-line text-ink/50 hover:text-ink">This month</button>
@@ -41,7 +41,7 @@
 
   <!-- Expenses card -->
   <div class="bg-papercard border border-line rounded-lg p-6">
-    <div class="flex items-center justify-between mb-1">
+    <div class="flex items-center justify-between mb-1 flex-wrap gap-y-2">
       <p class="text-xs uppercase tracking-wide text-ink/40">Expenses</p>
       <div class="flex gap-1" data-range-group="expense">
         <button type="button" data-range="1" class="range-btn text-xs px-2 py-0.5 rounded-full border border-line text-ink/50 hover:text-ink">This month</button>
@@ -73,7 +73,7 @@
 
 </div>
 
-<div class="grid grid-cols-2 gap-8">
+<div class="grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-8">
   <div>
     <div class="flex items-center justify-between mb-3">
       <h2 class="font-display text-lg font-semibold text-ink">Recent income</h2>
@@ -145,8 +145,8 @@ function barOptions() {
     maintainAspectRatio: false,
     plugins: { legend: { display: false }, tooltip: { callbacks: { label: (ctx) => money(ctx.parsed.y) } } },
     scales: {
-      x: { grid: { display: false } },
-      y: { beginAtZero: true, ticks: { callback: (v) => '$' + v.toLocaleString() } }
+      x: { grid: { display: false }, ticks: { font: { size: 11 } } },
+      y: { beginAtZero: true, ticks: { callback: (v) => '$' + v.toLocaleString(), font: { size: 10 }, maxTicksLimit: 5 } }
     }
   };
 }
@@ -193,8 +193,8 @@ new Chart(positionCtx, {
     maintainAspectRatio: false,
     plugins: { legend: { display: false }, tooltip: { callbacks: { label: (ctx) => ctx.dataset.label + ': ' + money(ctx.parsed.y) } } },
     scales: {
-      x: { grid: { display: false } },
-      y: { ticks: { callback: (v) => '$' + v.toLocaleString() } }
+      x: { grid: { display: false }, ticks: { font: { size: 11 } } },
+      y: { ticks: { callback: (v) => '$' + v.toLocaleString(), font: { size: 10 }, maxTicksLimit: 5 } }
     }
   }
 });

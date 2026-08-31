@@ -3,7 +3,7 @@
 {% block content %}
 
 <div class="max-w-xl">
-  <h1 class="font-display text-3xl font-semibold text-ink mb-8">Your profile</h1>
+  <h1 class="font-display text-2xl md:text-3xl font-semibold text-ink mb-8">Your profile</h1>
 
   {% if error %}
   <div class="text-sm text-rust bg-rustlight/40 border border-rust/30 rounded px-3 py-2 mb-6">{{ error }}</div>
@@ -50,7 +50,7 @@
     <div class="px-5 pb-5">
       <p class="text-xs text-ink/40 mb-4">This is just your own preference — other logins can pick a different theme. Income and expense figures always stay green/red regardless of theme.</p>
 
-      <div class="grid grid-cols-2 gap-3">
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
         {% for key, t in theme_options.items() %}
         <form method="post" action="/profile/theme">
           <input type="hidden" name="theme" value="{{ key }}" />

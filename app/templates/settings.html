@@ -37,8 +37,8 @@
         <p class="text-xs uppercase tracking-wide text-ink/50 mb-2 font-bold">All businesses</p>
         <div class="divide-y divide-line bg-white border border-line rounded mb-4">
           {% for b in all_businesses_full %}
-          <div class="flex items-center justify-between px-3 py-2.5">
-            <div class="flex items-center gap-2">
+          <div class="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between px-3 py-2.5">
+            <div class="flex items-center gap-2 flex-wrap">
               {% if b.slug == active_business.slug %}
               <span class="text-xs uppercase tracking-wide text-accent bg-accentlight/50 px-2 py-0.5 rounded-full">Active</span>
               {% endif %}
@@ -101,7 +101,7 @@
           <input type="text" name="abn" value="{{ active_business.abn or '' }}" class="w-full border border-line rounded px-3 py-2 bg-white text-ink text-sm" />
         </div>
 
-        <div class="grid grid-cols-2 gap-4">
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
             <label class="block text-xs uppercase tracking-wide text-ink/50 mb-1.5"><strong>Phone</strong></label>
             <input type="text" name="phone" value="{{ active_business.phone or '' }}" class="w-full border border-line rounded px-3 py-2 bg-white text-ink text-sm" />
@@ -116,7 +116,7 @@
           <label class="block text-xs uppercase tracking-wide text-ink/50"><strong>Address</strong></label>
           <input type="text" name="address_line" value="{{ active_business.address_line or '' }}" placeholder="Street address"
             class="w-full border border-line rounded px-3 py-2 bg-white text-ink text-sm" />
-          <div class="grid grid-cols-3 gap-3">
+          <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
             <input type="text" name="suburb" value="{{ active_business.suburb or '' }}" placeholder="Suburb"
               class="border border-line rounded px-3 py-2 bg-white text-ink text-sm" />
             <select name="state" class="border border-line rounded px-3 py-2 bg-white text-ink text-sm">
@@ -132,7 +132,7 @@
 
         <div class="border-t border-line pt-4 space-y-3">
           <label class="block text-xs uppercase tracking-wide text-ink/50"><strong>Payment details</strong></label>
-          <div class="grid grid-cols-2 gap-4">
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label class="block text-xs text-ink/40 mb-1"><strong>BSB</strong></label>
               <input type="text" name="payment_bsb" value="{{ active_business.payment_bsb or '' }}" class="w-full border border-line rounded px-3 py-2 bg-white text-ink text-sm" />
@@ -300,8 +300,8 @@
       <div class="divide-y divide-line bg-white border border-line rounded mb-5">
         {% for u in logins %}
         <div class="px-3 py-3">
-          <div class="flex items-center justify-between mb-1">
-            <div class="flex items-center gap-2">
+          <div class="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between mb-1">
+            <div class="flex items-center gap-2 flex-wrap">
               <span class="text-sm font-medium text-ink">{{ u.display_name or u.username }}</span>
               <span class="text-xs text-ink/40">({{ u.username }})</span>
               {% if u.id == user.id %}
@@ -344,7 +344,7 @@
       </div>
 
       <form method="post" action="/profile/users/new" class="border-t border-line pt-4 space-y-3">
-        <div class="grid grid-cols-2 gap-3">
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div>
             <label class="block text-xs uppercase tracking-wide text-ink/50 mb-1.5"><strong>Username</strong> <span class="text-rust">*</span></label>
             <input type="text" name="username" required class="w-full border border-line rounded px-3 py-2 bg-white text-ink" />
@@ -440,7 +440,7 @@
           <p class="text-xs text-ink/30 mt-1">The app looks up <span class="num">/.well-known/openid-configuration</span> under this URL.</p>
         </div>
 
-        <div class="grid grid-cols-2 gap-4">
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
             <label class="block text-xs uppercase tracking-wide text-ink/50 mb-1.5"><strong>Client ID</strong></label>
             <input type="text" name="oidc_client_id" value="{{ settings.oidc_client_id or '' }}"
@@ -495,8 +495,8 @@
           Enable SMTP email
         </label>
 
-        <div class="grid grid-cols-3 gap-4">
-          <div class="col-span-2">
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <div class="sm:col-span-2">
             <label class="block text-xs uppercase tracking-wide text-ink/50 mb-1.5"><strong>SMTP host</strong></label>
             <input type="text" name="smtp_host" value="{{ settings.smtp_host or '' }}" placeholder="smtp.example.com"
               class="w-full border border-line rounded px-3 py-2 bg-white text-ink text-sm" />
@@ -517,7 +517,7 @@
           </select>
         </div>
 
-        <div class="grid grid-cols-2 gap-4">
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
             <label class="block text-xs uppercase tracking-wide text-ink/50 mb-1.5"><strong>SMTP username</strong></label>
             <input type="text" name="smtp_username" value="{{ settings.smtp_username or '' }}"
@@ -531,7 +531,7 @@
           </div>
         </div>
 
-        <div class="grid grid-cols-2 gap-4">
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
             <label class="block text-xs uppercase tracking-wide text-ink/50 mb-1.5"><strong>From email</strong></label>
             <input type="email" name="smtp_from_email" value="{{ settings.smtp_from_email or '' }}" placeholder="noreply@example.com"

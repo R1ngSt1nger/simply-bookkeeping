@@ -2,10 +2,10 @@
 {% block title %}Contacts | {{ business_name() }}{% endblock %}
 {% block content %}
 
-<div class="flex items-end justify-between mb-8">
-  <h1 class="font-display text-3xl font-semibold text-ink">Contacts</h1>
+<div class="flex flex-col gap-3 mb-8 sm:flex-row sm:items-end sm:justify-between">
+  <h1 class="font-display text-2xl md:text-3xl font-semibold text-ink">Contacts</h1>
   {% if user.role in ['owner', 'bookkeeper'] %}
-  <a href="/contacts/new" class="bg-accent text-white text-sm font-medium px-4 py-2.5 rounded hover:bg-accentdeep transition-colors">+ Create contact</a>
+  <a href="/contacts/new" class="inline-block text-center bg-accent text-white text-sm font-medium px-4 py-2.5 rounded hover:bg-accentdeep transition-colors">+ Create contact</a>
   {% endif %}
 </div>
 
@@ -30,7 +30,8 @@
 </form>
 
 {% if contacts %}
-<div class="bg-papercard border border-line rounded-lg overflow-hidden mb-4">
+<!-- Desktop table -->
+<div class="hidden md:block bg-papercard border border-line rounded-lg overflow-hidden mb-4">
   <table class="w-full text-sm">
     <thead>
       <tr class="border-b border-line text-left text-xs uppercase tracking-wide text-ink/40">
@@ -55,7 +56,22 @@
   </table>
 </div>
 
-<div class="flex items-center justify-between text-sm text-ink/50">
+<!-- Mobile card list -->
+<div class="md:hidden bg-papercard border border-line rounded-lg divide-y divide-line overflow-hidden mb-4">
+  {% for c in contacts %}
+  <a href="/contacts/{{ c.id }}" class="block px-4 py-3.5 hover:bg-white transition-colors">
+    <div class="flex items-center justify-between gap-3 mb-1">
+      <p class="font-medium text-ink">{{ c.display_name }}</p>
+      <span class="text-xs uppercase tracking-wide shrink-0 {% if c.contact_type == 'customer' %}text-brass{% else %}text-rust{% endif %}">{{ c.contact_type }}</span>
+    </div>
+    {% if c.email or c.phone %}
+    <p class="text-xs text-ink/50">{{ c.email or "" }}{% if c.email and c.phone %} · {% endif %}{{ c.phone or "" }}</p>
+    {% endif %}
+  </a>
+  {% endfor %}
+</div>
+
+<div class="flex items-center justify-between text-sm text-ink/50 flex-wrap gap-3">
   <span>{{ total }} contact{{ 's' if total != 1 else '' }} — page {{ page }} of {{ total_pages }}</span>
   <div class="flex gap-2">
     {% if page > 1 %}

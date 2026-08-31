@@ -3,7 +3,7 @@
 {% block content %}
 
 <div class="flex items-end justify-between mb-8">
-  <h1 class="font-display text-3xl font-semibold text-ink">Uploads</h1>
+  <h1 class="font-display text-2xl md:text-3xl font-semibold text-ink">Uploads</h1>
 </div>
 
 <p class="text-sm text-ink/50 mb-5">Drop receipts or invoices here, then assign each one to a new expense record when you're ready. Files disappear from this list once assigned.</p>
@@ -21,12 +21,12 @@
 {% if files %}
 <div class="bg-papercard border border-line rounded-lg divide-y divide-line">
   {% for f in files %}
-  <div class="flex items-center justify-between px-4 py-3">
-    <a href="/uploads/{{ f.id }}/view" target="_blank" class="text-sm text-ink hover:underline flex items-center gap-2">
+  <div class="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between px-4 py-3">
+    <a href="/uploads/{{ f.id }}/view" target="_blank" class="text-sm text-ink hover:underline flex items-center gap-2 min-w-0">
       <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" class="shrink-0"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>
-      {{ f.original_filename }}
+      <span class="truncate">{{ f.original_filename }}</span>
     </a>
-    <div class="flex items-center gap-3">
+    <div class="flex items-center gap-3 flex-wrap">
       {% if f.ocr_processed %}
       <span class="text-xs uppercase tracking-wide text-accent bg-accentlight/40 px-2 py-0.5 rounded-full" title="Some fields will be pre-filled when you assign this to an expense">OCR ready</span>
       {% endif %}

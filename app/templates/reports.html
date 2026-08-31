@@ -2,9 +2,9 @@
 {% block title %}Profit &amp; Loss | {{ business_name() }}{% endblock %}
 {% block content %}
 
-<div class="flex items-end justify-between mb-8">
-  <h1 class="font-display text-3xl font-semibold text-ink">Profit &amp; loss</h1>
-  <a href="/reports/pdf?start={{ start }}&end={{ end }}" class="bg-accent text-white text-sm font-medium px-4 py-2.5 rounded hover:bg-accentdeep transition-colors">Export PDF</a>
+<div class="flex flex-col gap-3 mb-8 sm:flex-row sm:items-end sm:justify-between">
+  <h1 class="font-display text-2xl md:text-3xl font-semibold text-ink">Profit &amp; loss</h1>
+  <a href="/reports/pdf?start={{ start }}&end={{ end }}" class="inline-block text-center bg-accent text-white text-sm font-medium px-4 py-2.5 rounded hover:bg-accentdeep transition-colors">Export PDF</a>
 </div>
 
 <form method="get" action="/reports" class="bg-papercard border border-line rounded-lg p-5 mb-8 flex flex-wrap items-end gap-4">
@@ -39,15 +39,15 @@
   </span>
 {% endmacro %}
 
-<div class="bg-papercard border border-line rounded-lg overflow-hidden">
-  <table class="w-full text-sm">
+<div class="bg-papercard border border-line rounded-lg overflow-x-auto">
+  <table class="w-full text-sm min-w-[480px]">
     <thead>
       <tr class="border-b border-line text-right text-xs uppercase tracking-wide text-ink/40">
         <th class="px-5 py-3 font-medium text-left"><strong>Category</strong></th>
         <th class="px-5 py-3 font-medium"><strong>Actual</strong></th>
-        <th class="px-5 py-3 font-medium"><strong>Last Year</strong></th>
+        <th class="hidden md:table-cell px-5 py-3 font-medium"><strong>Last Year</strong></th>
         <th class="px-5 py-3 font-medium"><strong>Variance $</strong></th>
-        <th class="px-5 py-3 font-medium"><strong>Variance %</strong></th>
+        <th class="hidden md:table-cell px-5 py-3 font-medium"><strong>Variance %</strong></th>
       </tr>
     </thead>
     <tbody class="divide-y divide-line">
@@ -61,9 +61,9 @@
           {% else %}<span class="text-ink/50">{{ row.name }}</span>{% endif %}
         </td>
         <td class="px-5 py-2.5 text-right num">{{ row.actual | money }}</td>
-        <td class="px-5 py-2.5 text-right num text-ink/60">{{ row.last_year | money }}</td>
+        <td class="hidden md:table-cell px-5 py-2.5 text-right num text-ink/60">{{ row.last_year | money }}</td>
         <td class="px-5 py-2.5 text-right">{{ varcell(row.variance) }}</td>
-        <td class="px-5 py-2.5 text-right num text-ink/60">{{ "%.1f"|format(row.variance.pct) + "%" if row.variance.pct is not none else "-" }}</td>
+        <td class="hidden md:table-cell px-5 py-2.5 text-right num text-ink/60">{{ "%.1f"|format(row.variance.pct) + "%" if row.variance.pct is not none else "-" }}</td>
       </tr>
       {% else %}
       <tr><td colspan="5" class="px-5 py-4 text-ink/30 text-sm">No income in this period.</td></tr>
@@ -71,16 +71,16 @@
       <tr class="font-semibold border-t border-line">
         <td class="px-5 py-3">Total Income</td>
         <td class="px-5 py-3 text-right num">{{ total_income.actual | money }}</td>
-        <td class="px-5 py-3 text-right num text-ink/60">{{ total_income.last_year | money }}</td>
+        <td class="hidden md:table-cell px-5 py-3 text-right num text-ink/60">{{ total_income.last_year | money }}</td>
         <td class="px-5 py-3 text-right">{{ varcell(total_income.variance) }}</td>
-        <td class="px-5 py-3 text-right num text-ink/60">{{ "%.1f"|format(total_income.variance.pct) + "%" if total_income.variance.pct is not none else "-" }}</td>
+        <td class="hidden md:table-cell px-5 py-3 text-right num text-ink/60">{{ "%.1f"|format(total_income.variance.pct) + "%" if total_income.variance.pct is not none else "-" }}</td>
       </tr>
       <tr class="font-semibold bg-white/60">
         <td class="px-5 py-3">Gross Profit</td>
         <td class="px-5 py-3 text-right num">{{ total_income.actual | money }}</td>
-        <td class="px-5 py-3 text-right num text-ink/60">{{ total_income.last_year | money }}</td>
+        <td class="hidden md:table-cell px-5 py-3 text-right num text-ink/60">{{ total_income.last_year | money }}</td>
         <td class="px-5 py-3 text-right">{{ varcell(total_income.variance) }}</td>
-        <td class="px-5 py-3 text-right num text-ink/60">{{ "%.1f"|format(total_income.variance.pct) + "%" if total_income.variance.pct is not none else "-" }}</td>
+        <td class="hidden md:table-cell px-5 py-3 text-right num text-ink/60">{{ "%.1f"|format(total_income.variance.pct) + "%" if total_income.variance.pct is not none else "-" }}</td>
       </tr>
 
       <tr class="bg-white/60">
@@ -93,9 +93,9 @@
           {% else %}<span class="text-ink/50">{{ row.name }}</span>{% endif %}
         </td>
         <td class="px-5 py-2.5 text-right num">{{ row.actual | money }}</td>
-        <td class="px-5 py-2.5 text-right num text-ink/60">{{ row.last_year | money }}</td>
+        <td class="hidden md:table-cell px-5 py-2.5 text-right num text-ink/60">{{ row.last_year | money }}</td>
         <td class="px-5 py-2.5 text-right">{{ varcell(row.variance) }}</td>
-        <td class="px-5 py-2.5 text-right num text-ink/60">{{ "%.1f"|format(row.variance.pct) + "%" if row.variance.pct is not none else "-" }}</td>
+        <td class="hidden md:table-cell px-5 py-2.5 text-right num text-ink/60">{{ "%.1f"|format(row.variance.pct) + "%" if row.variance.pct is not none else "-" }}</td>
       </tr>
       {% else %}
       <tr><td colspan="5" class="px-5 py-4 text-ink/30 text-sm">No expenses in this period.</td></tr>
@@ -103,17 +103,17 @@
       <tr class="font-semibold border-t border-line">
         <td class="px-5 py-3">Total Expenses</td>
         <td class="px-5 py-3 text-right num">{{ total_expense.actual | money }}</td>
-        <td class="px-5 py-3 text-right num text-ink/60">{{ total_expense.last_year | money }}</td>
+        <td class="hidden md:table-cell px-5 py-3 text-right num text-ink/60">{{ total_expense.last_year | money }}</td>
         <td class="px-5 py-3 text-right">{{ varcell(total_expense.variance) }}</td>
-        <td class="px-5 py-3 text-right num text-ink/60">{{ "%.1f"|format(total_expense.variance.pct) + "%" if total_expense.variance.pct is not none else "-" }}</td>
+        <td class="hidden md:table-cell px-5 py-3 text-right num text-ink/60">{{ "%.1f"|format(total_expense.variance.pct) + "%" if total_expense.variance.pct is not none else "-" }}</td>
       </tr>
 
       <tr class="font-semibold border-t-2 border-ink bg-ink/5">
         <td class="px-5 py-3 font-display text-base">Net Profit</td>
         <td class="px-5 py-3 text-right num text-base">{{ net_profit.actual | money }}</td>
-        <td class="px-5 py-3 text-right num text-ink/60">{{ net_profit.last_year | money }}</td>
+        <td class="hidden md:table-cell px-5 py-3 text-right num text-ink/60">{{ net_profit.last_year | money }}</td>
         <td class="px-5 py-3 text-right">{{ varcell(net_profit.variance) }}</td>
-        <td class="px-5 py-3 text-right num text-ink/60">{{ "%.1f"|format(net_profit.variance.pct) + "%" if net_profit.variance.pct is not none else "-" }}</td>
+        <td class="hidden md:table-cell px-5 py-3 text-right num text-ink/60">{{ "%.1f"|format(net_profit.variance.pct) + "%" if net_profit.variance.pct is not none else "-" }}</td>
       </tr>
     </tbody>
   </table>

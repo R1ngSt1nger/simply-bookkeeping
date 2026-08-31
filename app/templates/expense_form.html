@@ -3,8 +3,8 @@
 {% block content %}
 
 <div class="max-w-2xl">
-  <div class="flex items-center justify-between mb-8">
-    <h1 class="font-display text-3xl font-semibold text-ink">{% if expense %}Edit expense{% else %}Record expense{% endif %}</h1>
+  <div class="flex flex-wrap items-center justify-between gap-3 mb-8">
+    <h1 class="font-display text-2xl md:text-3xl font-semibold text-ink">{% if expense %}Edit expense{% else %}Record expense{% endif %}</h1>
     {% if expense and can_write %}
     <form method="post" action="/expenses/{{ expense.id }}/delete" id="delete-expense-form">
       <button type="button" onclick="openConfirmModal(document.getElementById('delete-expense-form'), {title: 'Delete this expense?', message: &quot;This can't be undone.&quot;})" class="text-sm text-rust hover:underline">Delete</button>
@@ -22,7 +22,7 @@
   <form method="post" action="{% if expense %}/expenses/{{ expense.id }}/edit{% else %}/expenses/new{% endif %}" enctype="multipart/form-data" class="space-y-6">
   <fieldset {% if not can_write %}disabled{% endif %} class="space-y-6 border-0 p-0 m-0">
 
-    <div class="grid grid-cols-2 gap-5">
+    <div class="grid grid-cols-1 sm:grid-cols-2 gap-5">
       <div>
         <label class="block text-xs uppercase tracking-wide text-ink/50 mb-1.5"><strong>Date</strong> <span class="text-rust">*</span></label>
         <input type="date" name="exp_date" required value="{% if expense %}{{ expense.date.isoformat() }}{% elif ocr_prefill and ocr_prefill.date %}{{ ocr_prefill.date }}{% else %}{{ today }}{% endif %}"
@@ -45,49 +45,55 @@
       <div id="line-items" class="bg-papercard border border-line rounded-lg divide-y divide-line">
         {% if expense and expense.line_items %}
           {% for li in expense.line_items %}
-          <div class="line-item flex items-center gap-3 px-4 py-3">
-            <input type="text" name="line_desc" required value="{{ li.description }}"
+          <div class="line-item flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3 px-4 py-3">
+            <input type="text" name="line_desc" required value="{{ li.description }}" placeholder="Description"
               class="flex-1 border border-line rounded px-3 py-1.5 bg-white text-sm" />
-            <select name="line_category" class="border border-line rounded px-3 py-1.5 bg-white text-sm w-40">
-              <option value="">Uncategorised</option>
-              {% for c in categories %}
-              <option value="{{ c.id }}" {% if li.category_id == c.id %}selected{% endif %}>{{ c.name }}</option>
-              {% endfor %}
-            </select>
-            <input type="number" step="0.01" name="line_amount" required value="{{ li.amount }}" oninput="recalc(); updateGhost(this)"
-              class="amt-input num w-32 border border-line rounded px-3 py-1.5 bg-white text-sm text-right" />
-            <button type="button" onclick="removeLine(this)" class="text-ink/30 hover:text-rust text-lg leading-none px-1">&times;</button>
+            <div class="flex items-center gap-2 sm:gap-3">
+              <select name="line_category" class="flex-1 sm:flex-none sm:w-40 border border-line rounded px-3 py-1.5 bg-white text-sm">
+                <option value="">Uncategorised</option>
+                {% for c in categories %}
+                <option value="{{ c.id }}" {% if li.category_id == c.id %}selected{% endif %}>{{ c.name }}</option>
+                {% endfor %}
+              </select>
+              <input type="number" step="0.01" name="line_amount" required value="{{ li.amount }}" oninput="recalc(); updateGhost(this)"
+                class="amt-input num w-28 sm:w-32 shrink-0 border border-line rounded px-3 py-1.5 bg-white text-sm text-right" />
+              <button type="button" onclick="removeLine(this)" class="text-ink/30 hover:text-rust text-lg leading-none px-1 shrink-0">&times;</button>
+            </div>
           </div>
           {% endfor %}
         {% elif ocr_prefill and ocr_prefill.line_items %}
           {% for li in ocr_prefill.line_items %}
-          <div class="line-item flex items-center gap-3 px-4 py-3">
-            <input type="text" name="line_desc" required value="{{ li.description }}"
+          <div class="line-item flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3 px-4 py-3">
+            <input type="text" name="line_desc" required value="{{ li.description }}" placeholder="Description"
               class="flex-1 border border-line rounded px-3 py-1.5 bg-white text-sm" />
-            <select name="line_category" class="border border-line rounded px-3 py-1.5 bg-white text-sm w-40">
-              <option value="">Uncategorised</option>
-              {% for c in categories %}
-              <option value="{{ c.id }}">{{ c.name }}</option>
-              {% endfor %}
-            </select>
-            <input type="number" step="0.01" name="line_amount" required value="{{ li.amount }}" oninput="recalc(); updateGhost(this)"
-              class="amt-input num w-32 border border-line rounded px-3 py-1.5 bg-white text-sm text-right" />
-            <button type="button" onclick="removeLine(this)" class="text-ink/30 hover:text-rust text-lg leading-none px-1">&times;</button>
+            <div class="flex items-center gap-2 sm:gap-3">
+              <select name="line_category" class="flex-1 sm:flex-none sm:w-40 border border-line rounded px-3 py-1.5 bg-white text-sm">
+                <option value="">Uncategorised</option>
+                {% for c in categories %}
+                <option value="{{ c.id }}">{{ c.name }}</option>
+                {% endfor %}
+              </select>
+              <input type="number" step="0.01" name="line_amount" required value="{{ li.amount }}" oninput="recalc(); updateGhost(this)"
+                class="amt-input num w-28 sm:w-32 shrink-0 border border-line rounded px-3 py-1.5 bg-white text-sm text-right" />
+              <button type="button" onclick="removeLine(this)" class="text-ink/30 hover:text-rust text-lg leading-none px-1 shrink-0">&times;</button>
+            </div>
           </div>
           {% endfor %}
         {% else %}
-          <div class="line-item flex items-center gap-3 px-4 py-3">
-            <input type="text" name="line_desc" required
+          <div class="line-item flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3 px-4 py-3">
+            <input type="text" name="line_desc" required placeholder="Description"
               class="flex-1 border border-line rounded px-3 py-1.5 bg-white text-sm" />
-            <select name="line_category" class="border border-line rounded px-3 py-1.5 bg-white text-sm w-40">
-              <option value="">Uncategorised</option>
-              {% for c in categories %}
-              <option value="{{ c.id }}">{{ c.name }}</option>
-              {% endfor %}
-            </select>
-            <input type="number" step="0.01" name="line_amount" required value="0.00" oninput="recalc(); updateGhost(this)"
-              class="amt-input num w-32 border border-line rounded px-3 py-1.5 bg-white text-sm text-right" />
-            <button type="button" onclick="removeLine(this)" class="text-ink/30 hover:text-rust text-lg leading-none px-1">&times;</button>
+            <div class="flex items-center gap-2 sm:gap-3">
+              <select name="line_category" class="flex-1 sm:flex-none sm:w-40 border border-line rounded px-3 py-1.5 bg-white text-sm">
+                <option value="">Uncategorised</option>
+                {% for c in categories %}
+                <option value="{{ c.id }}">{{ c.name }}</option>
+                {% endfor %}
+              </select>
+              <input type="number" step="0.01" name="line_amount" required value="0.00" oninput="recalc(); updateGhost(this)"
+                class="amt-input num w-28 sm:w-32 shrink-0 border border-line rounded px-3 py-1.5 bg-white text-sm text-right" />
+              <button type="button" onclick="removeLine(this)" class="text-ink/30 hover:text-rust text-lg leading-none px-1 shrink-0">&times;</button>
+            </div>
           </div>
         {% endif %}
       </div>
@@ -112,7 +118,7 @@
     <div>
       <label class="block text-xs uppercase tracking-wide text-ink/50 mb-1.5"><strong>Invoice / receipt attachment</strong></label>
       {% if expense and expense.attachment_path %}
-      <div class="flex items-center gap-3 mb-2">
+      <div class="flex items-center gap-3 mb-2 flex-wrap">
         <a href="/attachments/{{ expense.id }}" target="_blank" class="inline-flex items-center gap-2 text-sm bg-accent text-white px-3 py-2 rounded hover:bg-accentdeep transition-colors">
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>
           View attachment
@@ -126,7 +132,7 @@
       </button>
       {% endif %}
       {% if pending_upload %}
-      <div class="flex items-center gap-3 mb-2 text-sm bg-brasslight/20 border border-brass/30 rounded px-3 py-2">
+      <div class="flex items-center gap-3 mb-2 text-sm bg-brasslight/20 border border-brass/30 rounded px-3 py-2 flex-wrap">
         <span class="inline-flex items-center gap-2">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>
           {{ pending_upload.original_filename }}
@@ -142,30 +148,32 @@
 
     </fieldset>
 
-    <div class="flex gap-3 pt-2">
+    <div class="flex flex-col sm:flex-row gap-3 pt-2">
       {% if can_write %}
-      <button type="submit" class="bg-accent text-white text-sm font-medium px-5 py-2.5 rounded hover:bg-accentdeep transition-colors">
+      <button type="submit" class="text-center bg-accent text-white text-sm font-medium px-5 py-2.5 rounded hover:bg-accentdeep transition-colors">
         {% if expense %}Save changes{% else %}Record expense{% endif %}
       </button>
       {% endif %}
-      <a href="/expenses" class="text-sm text-ink/50 hover:text-ink px-5 py-2.5">{% if can_write %}Cancel{% else %}Back{% endif %}</a>
+      <a href="/expenses" class="text-center text-sm text-ink/50 hover:text-ink px-5 py-2.5">{% if can_write %}Cancel{% else %}Back{% endif %}</a>
     </div>
   </form>
 </div>
 
 <template id="line-template">
-  <div class="line-item flex items-center gap-3 px-4 py-3">
-    <input type="text" name="line_desc" required
+  <div class="line-item flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3 px-4 py-3">
+    <input type="text" name="line_desc" required placeholder="Description"
       class="flex-1 border border-line rounded px-3 py-1.5 bg-white text-sm" />
-    <select name="line_category" class="border border-line rounded px-3 py-1.5 bg-white text-sm w-40">
-      <option value="">Uncategorised</option>
-      {% for c in categories %}
-      <option value="{{ c.id }}">{{ c.name }}</option>
-      {% endfor %}
-    </select>
-    <input type="number" step="0.01" name="line_amount" required value="0.00" oninput="recalc(); updateGhost(this)"
-      class="amt-input num w-32 border border-line rounded px-3 py-1.5 bg-white text-sm text-right" />
-    <button type="button" onclick="removeLine(this)" class="text-ink/30 hover:text-rust text-lg leading-none px-1">&times;</button>
+    <div class="flex items-center gap-2 sm:gap-3">
+      <select name="line_category" class="flex-1 sm:flex-none sm:w-40 border border-line rounded px-3 py-1.5 bg-white text-sm">
+        <option value="">Uncategorised</option>
+        {% for c in categories %}
+        <option value="{{ c.id }}">{{ c.name }}</option>
+        {% endfor %}
+      </select>
+      <input type="number" step="0.01" name="line_amount" required value="0.00" oninput="recalc(); updateGhost(this)"
+        class="amt-input num w-28 sm:w-32 shrink-0 border border-line rounded px-3 py-1.5 bg-white text-sm text-right" />
+      <button type="button" onclick="removeLine(this)" class="text-ink/30 hover:text-rust text-lg leading-none px-1 shrink-0">&times;</button>
+    </div>
   </div>
 </template>
 

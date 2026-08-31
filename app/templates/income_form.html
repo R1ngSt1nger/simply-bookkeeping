@@ -3,8 +3,8 @@
 {% block content %}
 
 <div class="max-w-2xl">
-  <div class="flex items-center justify-between mb-8">
-    <h1 class="font-display text-3xl font-semibold text-ink">{% if transaction %}Edit income{% else %}Record income{% endif %}</h1>
+  <div class="flex flex-wrap items-center justify-between gap-3 mb-8">
+    <h1 class="font-display text-2xl md:text-3xl font-semibold text-ink">{% if transaction %}Edit income{% else %}Record income{% endif %}</h1>
     {% if transaction and can_write %}
     <form method="post" action="/income/{{ transaction.id }}/delete" id="delete-income-form">
       <button type="button" onclick="openConfirmModal(document.getElementById('delete-income-form'), {title: 'Delete this income record?', message: &quot;This can't be undone.&quot;})" class="text-sm text-rust hover:underline">Delete</button>
@@ -19,7 +19,7 @@
   <form method="post" action="{% if transaction %}/income/{{ transaction.id }}/edit{% else %}/income/new{% endif %}" class="space-y-6">
   <fieldset {% if not can_write %}disabled{% endif %} class="space-y-6 border-0 p-0 m-0">
 
-    <div class="grid grid-cols-2 gap-5">
+    <div class="grid grid-cols-1 sm:grid-cols-2 gap-5">
       <div>
         <label class="block text-xs uppercase tracking-wide text-ink/50 mb-1.5"><strong>Date</strong> <span class="text-rust">*</span></label>
         <input type="date" name="tx_date" required value="{% if transaction %}{{ transaction.date.isoformat() }}{% else %}{{ today }}{% endif %}"
@@ -43,47 +43,51 @@
       <div id="line-items" class="bg-papercard border border-line rounded-lg divide-y divide-line">
         {% if transaction %}
           {% for li in transaction.line_items %}
-          <div class="line-item flex items-center gap-3 px-4 py-3">
-            <input type="text" name="line_desc" required value="{{ li.description }}"
+          <div class="line-item flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3 px-4 py-3">
+            <input type="text" name="line_desc" required value="{{ li.description }}" placeholder="Description"
               class="flex-1 border border-line rounded px-3 py-1.5 bg-white text-sm" />
-            <select name="line_category" class="border border-line rounded px-3 py-1.5 bg-white text-sm w-44">
-              <option value="">Uncategorised</option>
-              <optgroup label="Income categories">
-                {% for c in categories.income %}
-                <option value="{{ c.id }}" {% if li.category_id == c.id %}selected{% endif %}>{{ c.name }}</option>
-                {% endfor %}
-              </optgroup>
-              <optgroup label="Expense categories">
-                {% for c in categories.expense %}
-                <option value="{{ c.id }}" {% if li.category_id == c.id %}selected{% endif %}>{{ c.name }}</option>
-                {% endfor %}
-              </optgroup>
-            </select>
-            <input type="number" step="0.01" name="line_amount" required value="{{ li.amount }}" oninput="recalc(); updateGhost(this)"
-              class="amt-input num w-32 border border-line rounded px-3 py-1.5 bg-white text-sm text-right" />
-            <button type="button" onclick="removeLine(this)" class="text-ink/30 hover:text-rust text-lg leading-none px-1">&times;</button>
+            <div class="flex items-center gap-2 sm:gap-3">
+              <select name="line_category" class="flex-1 sm:flex-none sm:w-44 border border-line rounded px-3 py-1.5 bg-white text-sm">
+                <option value="">Uncategorised</option>
+                <optgroup label="Income categories">
+                  {% for c in categories.income %}
+                  <option value="{{ c.id }}" {% if li.category_id == c.id %}selected{% endif %}>{{ c.name }}</option>
+                  {% endfor %}
+                </optgroup>
+                <optgroup label="Expense categories">
+                  {% for c in categories.expense %}
+                  <option value="{{ c.id }}" {% if li.category_id == c.id %}selected{% endif %}>{{ c.name }}</option>
+                  {% endfor %}
+                </optgroup>
+              </select>
+              <input type="number" step="0.01" name="line_amount" required value="{{ li.amount }}" oninput="recalc(); updateGhost(this)"
+                class="amt-input num w-28 sm:w-32 shrink-0 border border-line rounded px-3 py-1.5 bg-white text-sm text-right" />
+              <button type="button" onclick="removeLine(this)" class="text-ink/30 hover:text-rust text-lg leading-none px-1 shrink-0">&times;</button>
+            </div>
           </div>
           {% endfor %}
         {% else %}
-          <div class="line-item flex items-center gap-3 px-4 py-3">
-            <input type="text" name="line_desc" required
+          <div class="line-item flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3 px-4 py-3">
+            <input type="text" name="line_desc" required placeholder="Description"
               class="flex-1 border border-line rounded px-3 py-1.5 bg-white text-sm" />
-            <select name="line_category" class="border border-line rounded px-3 py-1.5 bg-white text-sm w-44">
-              <option value="">Uncategorised</option>
-              <optgroup label="Income categories">
-                {% for c in categories.income %}
-                <option value="{{ c.id }}">{{ c.name }}</option>
-                {% endfor %}
-              </optgroup>
-              <optgroup label="Expense categories">
-                {% for c in categories.expense %}
-                <option value="{{ c.id }}">{{ c.name }}</option>
-                {% endfor %}
-              </optgroup>
-            </select>
-            <input type="number" step="0.01" name="line_amount" required value="0.00" oninput="recalc(); updateGhost(this)"
-              class="amt-input num w-32 border border-line rounded px-3 py-1.5 bg-white text-sm text-right" />
-            <button type="button" onclick="removeLine(this)" class="text-ink/30 hover:text-rust text-lg leading-none px-1">&times;</button>
+            <div class="flex items-center gap-2 sm:gap-3">
+              <select name="line_category" class="flex-1 sm:flex-none sm:w-44 border border-line rounded px-3 py-1.5 bg-white text-sm">
+                <option value="">Uncategorised</option>
+                <optgroup label="Income categories">
+                  {% for c in categories.income %}
+                  <option value="{{ c.id }}">{{ c.name }}</option>
+                  {% endfor %}
+                </optgroup>
+                <optgroup label="Expense categories">
+                  {% for c in categories.expense %}
+                  <option value="{{ c.id }}">{{ c.name }}</option>
+                  {% endfor %}
+                </optgroup>
+              </select>
+              <input type="number" step="0.01" name="line_amount" required value="0.00" oninput="recalc(); updateGhost(this)"
+                class="amt-input num w-28 sm:w-32 shrink-0 border border-line rounded px-3 py-1.5 bg-white text-sm text-right" />
+              <button type="button" onclick="removeLine(this)" class="text-ink/30 hover:text-rust text-lg leading-none px-1 shrink-0">&times;</button>
+            </div>
           </div>
         {% endif %}
       </div>
@@ -114,7 +118,7 @@
         {% if not transaction %}
         <p class="text-sm text-ink/50">Save this income record first, then come back here to generate an invoice.</p>
         {% else %}
-        <div class="grid grid-cols-2 gap-5 mb-4">
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-5 mb-4">
           <div>
             <label class="block text-xs uppercase tracking-wide text-ink/50 mb-1.5"><strong>Due date</strong></label>
             <input type="date" name="invoice_due_date" {% if not can_write %}disabled{% endif %} value="{{ transaction.invoice_due_date.isoformat() if transaction.invoice_due_date else '' }}"
@@ -140,37 +144,39 @@
       </div>
     </details>
 
-    <div class="flex gap-3 pt-2">
+    <div class="flex flex-col sm:flex-row gap-3 pt-2">
       {% if can_write %}
-      <button type="submit" class="bg-accent text-white text-sm font-medium px-5 py-2.5 rounded hover:bg-accentdeep transition-colors">
+      <button type="submit" class="text-center bg-accent text-white text-sm font-medium px-5 py-2.5 rounded hover:bg-accentdeep transition-colors">
         {% if transaction %}Save changes{% else %}Record income{% endif %}
       </button>
       {% endif %}
-      <a href="/income" class="text-sm text-ink/50 hover:text-ink px-5 py-2.5">{% if can_write %}Cancel{% else %}Back{% endif %}</a>
+      <a href="/income" class="text-center text-sm text-ink/50 hover:text-ink px-5 py-2.5">{% if can_write %}Cancel{% else %}Back{% endif %}</a>
     </div>
   </form>
 </div>
 
 <template id="line-template">
-  <div class="line-item flex items-center gap-3 px-4 py-3">
-    <input type="text" name="line_desc" required
+  <div class="line-item flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3 px-4 py-3">
+    <input type="text" name="line_desc" required placeholder="Description"
       class="flex-1 border border-line rounded px-3 py-1.5 bg-white text-sm" />
-    <select name="line_category" class="border border-line rounded px-3 py-1.5 bg-white text-sm w-44">
-      <option value="">Uncategorised</option>
-      <optgroup label="Income categories">
-        {% for c in categories.income %}
-        <option value="{{ c.id }}">{{ c.name }}</option>
-        {% endfor %}
-      </optgroup>
-      <optgroup label="Expense categories">
-        {% for c in categories.expense %}
-        <option value="{{ c.id }}">{{ c.name }}</option>
-        {% endfor %}
-      </optgroup>
-    </select>
-    <input type="number" step="0.01" name="line_amount" required value="0.00" oninput="recalc(); updateGhost(this)"
-      class="amt-input num w-32 border border-line rounded px-3 py-1.5 bg-white text-sm text-right" />
-    <button type="button" onclick="removeLine(this)" class="text-ink/30 hover:text-rust text-lg leading-none px-1">&times;</button>
+    <div class="flex items-center gap-2 sm:gap-3">
+      <select name="line_category" class="flex-1 sm:flex-none sm:w-44 border border-line rounded px-3 py-1.5 bg-white text-sm">
+        <option value="">Uncategorised</option>
+        <optgroup label="Income categories">
+          {% for c in categories.income %}
+          <option value="{{ c.id }}">{{ c.name }}</option>
+          {% endfor %}
+        </optgroup>
+        <optgroup label="Expense categories">
+          {% for c in categories.expense %}
+          <option value="{{ c.id }}">{{ c.name }}</option>
+          {% endfor %}
+        </optgroup>
+      </select>
+      <input type="number" step="0.01" name="line_amount" required value="0.00" oninput="recalc(); updateGhost(this)"
+        class="amt-input num w-28 sm:w-32 shrink-0 border border-line rounded px-3 py-1.5 bg-white text-sm text-right" />
+      <button type="button" onclick="removeLine(this)" class="text-ink/30 hover:text-rust text-lg leading-none px-1 shrink-0">&times;</button>
+    </div>
   </div>
 </template>
 

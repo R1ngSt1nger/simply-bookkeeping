@@ -8,27 +8,31 @@
 
   <div id="payment-rows" class="space-y-2 mb-3">
     {% for p in payments %}
-    <div class="payment-row flex items-center gap-3">
-      <input type="date" name="payment_date" required value="{{ p.date.isoformat() }}" onchange="recalc()"
-        class="border border-line rounded px-3 py-1.5 bg-white text-sm w-40" />
-      <input type="number" step="0.01" name="payment_amount" required value="{{ p.amount }}" oninput="recalc()"
-        class="payment-amount-input num flex-1 border border-line rounded px-3 py-1.5 bg-white text-sm text-right" />
-      <select name="payment_method" class="border border-line rounded px-3 py-1.5 bg-white text-sm w-36">
-        {% if p.method not in payment_methods %}
-        <option value="{{ p.method }}" selected>{{ p.method }} (removed)</option>
-        {% endif %}
-        {% for m in payment_methods %}
-        <option value="{{ m }}" {% if p.method == m %}selected{% endif %}>{{ m }}</option>
-        {% endfor %}
-      </select>
-      <button type="button" onclick="removePayment(this)" class="text-ink/30 hover:text-rust text-lg leading-none px-1">&times;</button>
+    <div class="payment-row flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3">
+      <div class="flex items-center gap-2 sm:gap-3">
+        <input type="date" name="payment_date" required value="{{ p.date.isoformat() }}" onchange="recalc()"
+          class="flex-1 sm:flex-none sm:w-40 border border-line rounded px-3 py-1.5 bg-white text-sm" />
+        <input type="number" step="0.01" name="payment_amount" required value="{{ p.amount }}" oninput="recalc()"
+          class="payment-amount-input num flex-1 border border-line rounded px-3 py-1.5 bg-white text-sm text-right" />
+      </div>
+      <div class="flex items-center gap-2 sm:gap-3">
+        <select name="payment_method" class="flex-1 sm:flex-none sm:w-36 border border-line rounded px-3 py-1.5 bg-white text-sm">
+          {% if p.method not in payment_methods %}
+          <option value="{{ p.method }}" selected>{{ p.method }} (removed)</option>
+          {% endif %}
+          {% for m in payment_methods %}
+          <option value="{{ m }}" {% if p.method == m %}selected{% endif %}>{{ m }}</option>
+          {% endfor %}
+        </select>
+        <button type="button" onclick="removePayment(this)" class="text-ink/30 hover:text-rust text-lg leading-none px-1 shrink-0">&times;</button>
+      </div>
     </div>
     {% endfor %}
   </div>
 
   <button type="button" onclick="addPayment()" class="text-sm text-ink/60 hover:text-ink border border-line rounded px-3 py-1.5 bg-white">+ Add payment</button>
 
-  <div class="grid grid-cols-2 gap-5 items-end pt-4 mt-4 border-t border-line">
+  <div class="grid grid-cols-2 gap-3 sm:gap-5 items-end pt-4 mt-4 border-t border-line">
     <div>
       <p class="text-xs uppercase tracking-wide text-ink/50 mb-1.5"><strong>{{ amount_label | default("Amount received") }}</strong></p>
       <p id="received-display" class="num text-lg text-ink/70">$0.00</p>
@@ -41,17 +45,21 @@
 </div>
 
 <template id="payment-template">
-  <div class="payment-row flex items-center gap-3">
-    <input type="date" name="payment_date" required value="{{ today }}" onchange="recalc()"
-      class="border border-line rounded px-3 py-1.5 bg-white text-sm w-40" />
-    <input type="number" step="0.01" name="payment_amount" required value="0.00" oninput="recalc()"
-      class="payment-amount-input num flex-1 border border-line rounded px-3 py-1.5 bg-white text-sm text-right" />
-    <select name="payment_method" class="border border-line rounded px-3 py-1.5 bg-white text-sm w-36">
-      {% for m in payment_methods %}
-      <option value="{{ m }}">{{ m }}</option>
-      {% endfor %}
-    </select>
-    <button type="button" onclick="removePayment(this)" class="text-ink/30 hover:text-rust text-lg leading-none px-1">&times;</button>
+  <div class="payment-row flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3">
+    <div class="flex items-center gap-2 sm:gap-3">
+      <input type="date" name="payment_date" required value="{{ today }}" onchange="recalc()"
+        class="flex-1 sm:flex-none sm:w-40 border border-line rounded px-3 py-1.5 bg-white text-sm" />
+      <input type="number" step="0.01" name="payment_amount" required value="0.00" oninput="recalc()"
+        class="payment-amount-input num flex-1 border border-line rounded px-3 py-1.5 bg-white text-sm text-right" />
+    </div>
+    <div class="flex items-center gap-2 sm:gap-3">
+      <select name="payment_method" class="flex-1 sm:flex-none sm:w-36 border border-line rounded px-3 py-1.5 bg-white text-sm">
+        {% for m in payment_methods %}
+        <option value="{{ m }}">{{ m }}</option>
+        {% endfor %}
+      </select>
+      <button type="button" onclick="removePayment(this)" class="text-ink/30 hover:text-rust text-lg leading-none px-1 shrink-0">&times;</button>
+    </div>
   </div>
 </template>
 
