@@ -46,21 +46,42 @@ _DATE_TEXT_RE = re.compile(
 
 def extract_text(file_path: str) -> str:
     """OCR a PDF or image file and return the raw recognised text. Multi-page
-    PDFs have each page's text concatenated in order."""
+    PDFs have each page's text concatenated in order.
+
+    Uses Tesseract's PSM 4 ("assume a single column of variable-sized text")
+    rather than its fully-automatic default — invoices with a multi-column
+    line-item table read dramatically more coherently in this mode; the
+    default mode frequently reads entire table columns in sequence (all
+    descriptions, then all amounts) rather than row by row."""
     ext = os.path.splitext(file_path)[1].lower()
+    tess_config = "--psm 4"
 
     if ext in IMAGE_EXTENSIONS:
-        return pytesseract.image_to_string(Image.open(file_path))
+        return pytesseract.image_to_string(Image.open(file_path), config=tess_config)
 
     if ext in PDF_EXTENSIONS:
         from pdf2image import convert_from_path
         pages = convert_from_path(file_path, dpi=300)
-        return "\n".join(pytesseract.image_to_string(page) for page in pages)
+        return "\n".join(pytesseract.image_to_string(page, config=tess_config) for page in pages)
 
     return ""
 
 
 def _parse_date(text: str):
+    # Prefer a date specifically labelled as the issue date — invoices often
+    # show several dates (issue, due), and we want the one the invoice was
+    # actually raised on, not whichever happens to appear first in the text.
+    issue_match = re.search(r"issue\s*date[^\d]{0,15}", text, re.IGNORECASE)
+    if issue_match:
+        window = text[issue_match.end():issue_match.end() + 20]
+        found = _parse_date_in(window)
+        if found:
+            return found
+
+    return _parse_date_in(text)
+
+
+def _parse_date_in(text: str):
     m = _DATE_NUMERIC_RE.search(text)
     if m:
         day, month, year = int(m.group(1)), int(m.group(2)), int(m.group(3))
@@ -85,15 +106,38 @@ def _parse_date(text: str):
     return None
 
 
+_INVOICE_NUMBER_REJECT = {
+    "number", "no", "date", "issue", "due", "tax", "name", "amount",
+    "total", "paid", "balance", "gst", "invoice",
+}
+
+
 def _parse_invoice_number(text: str):
-    m = _INVOICE_NUMBER_RE.search(text)
-    if not m:
-        m = _INVOICE_NUMBER_FALLBACK_RE.search(text)
-    if m:
-        candidate = m.group(1).strip().rstrip(".:")
-        if candidate.lower() not in ("number", "no", "date"):
-            return candidate
-    return None
+    def first_valid(pattern):
+        for m in pattern.finditer(text):
+            candidate = m.group(1).strip().rstrip(".:")
+            if candidate.lower() not in _INVOICE_NUMBER_REJECT and any(ch.isdigit() for ch in candidate):
+                return candidate
+        return None
+
+    return first_valid(_INVOICE_NUMBER_RE) or first_valid(_INVOICE_NUMBER_FALLBACK_RE)
+
+
+_TRAILING_NOISE_RE = re.compile(
+    r"\s+(?:GST|N-T|FRE|excl(?:uding)?|incl(?:uding)?|ex\.?|inc\.?)\.?\s*$",
+    re.IGNORECASE,
+)
+
+
+def _clean_description(description: str) -> str:
+    # Strip a trailing tax-code word left over from the same table row (e.g.
+    # "Cleaning Services Hrs 4 60.00 GST" → drop the "GST").
+    description = _TRAILING_NOISE_RE.sub("", description).strip()
+    # Collapse an immediately-repeated word, a common OCR artefact where a
+    # wrapped column header gets read twice in a row ("Cleaning Cleaning...").
+    words = description.split()
+    deduped = [w for i, w in enumerate(words) if i == 0 or w.lower() != words[i - 1].lower()]
+    return " ".join(deduped)
 
 
 def _parse_line_items(text: str):
@@ -109,7 +153,7 @@ def _parse_line_items(text: str):
         if not amount_match:
             continue
 
-        description = line[:amount_match.start()].strip(" .:$-")
+        description = _clean_description(line[:amount_match.start()].strip(" .:$-"))
         if not description:
             continue
         if any(kw in description.lower() for kw in _SKIP_LINE_KEYWORDS):
