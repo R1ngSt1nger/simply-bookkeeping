@@ -16,7 +16,7 @@
           class="payment-amount-input num flex-1 border border-line rounded px-3 py-1.5 bg-white text-sm text-right" />
       </div>
       <div class="flex items-center gap-2 sm:gap-3">
-        <select name="payment_method" class="flex-1 sm:flex-none sm:w-36 border border-line rounded px-3 py-1.5 bg-white text-sm">
+        <select name="payment_method" class="flex-1 sm:flex-none sm:w-48 border border-line rounded px-3 py-1.5 bg-white text-sm">
           {% if p.method not in payment_methods %}
           <option value="{{ p.method }}" selected>{{ p.method }} (removed)</option>
           {% endif %}
@@ -53,7 +53,7 @@
         class="payment-amount-input num flex-1 border border-line rounded px-3 py-1.5 bg-white text-sm text-right" />
     </div>
     <div class="flex items-center gap-2 sm:gap-3">
-      <select name="payment_method" class="flex-1 sm:flex-none sm:w-36 border border-line rounded px-3 py-1.5 bg-white text-sm">
+      <select name="payment_method" class="flex-1 sm:flex-none sm:w-48 border border-line rounded px-3 py-1.5 bg-white text-sm">
         {% for m in payment_methods %}
         <option value="{{ m }}">{{ m }}</option>
         {% endfor %}

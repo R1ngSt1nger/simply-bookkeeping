@@ -2,7 +2,7 @@
 {% block title %}{% if expense %}Edit expense{% else %}Record expense{% endif %} | {{ business_name() }}{% endblock %}
 {% block content %}
 
-<div class="max-w-2xl">
+<div class="max-w-4xl">
   <div class="flex flex-wrap items-center justify-between gap-3 mb-8">
     <h1 class="font-display text-2xl md:text-3xl font-semibold text-ink">{% if expense %}Edit expense{% else %}Record expense{% endif %}</h1>
     {% if expense and can_write %}
@@ -22,7 +22,7 @@
   <form method="post" action="{% if expense %}/expenses/{{ expense.id }}/edit{% else %}/expenses/new{% endif %}" enctype="multipart/form-data" class="space-y-6">
   <fieldset {% if not can_write %}disabled{% endif %} class="space-y-6 border-0 p-0 m-0">
 
-    <div class="grid grid-cols-1 sm:grid-cols-2 gap-5">
+    <div class="grid grid-cols-1 sm:grid-cols-2 gap-5 max-w-lg">
       <div>
         <label class="block text-xs uppercase tracking-wide text-ink/50 mb-1.5"><strong>Date</strong> <span class="text-rust">*</span></label>
         <input type="date" name="exp_date" required value="{% if expense %}{{ expense.date.isoformat() }}{% elif ocr_prefill and ocr_prefill.date %}{{ ocr_prefill.date }}{% else %}{{ today }}{% endif %}"
@@ -49,7 +49,7 @@
             <input type="text" name="line_desc" required value="{{ li.description }}" placeholder="Description"
               class="flex-1 border border-line rounded px-3 py-1.5 bg-white text-sm" />
             <div class="flex items-center gap-2 sm:gap-3">
-              <select name="line_category" class="flex-1 sm:flex-none sm:w-40 border border-line rounded px-3 py-1.5 bg-white text-sm">
+              <select name="line_category" class="flex-1 sm:flex-none sm:w-56 border border-line rounded px-3 py-1.5 bg-white text-sm">
                 <option value="">Uncategorised</option>
                 {% for c in categories %}
                 <option value="{{ c.id }}" {% if li.category_id == c.id %}selected{% endif %}>{{ c.name }}</option>
@@ -67,7 +67,7 @@
             <input type="text" name="line_desc" required value="{{ li.description }}" placeholder="Description"
               class="flex-1 border border-line rounded px-3 py-1.5 bg-white text-sm" />
             <div class="flex items-center gap-2 sm:gap-3">
-              <select name="line_category" class="flex-1 sm:flex-none sm:w-40 border border-line rounded px-3 py-1.5 bg-white text-sm">
+              <select name="line_category" class="flex-1 sm:flex-none sm:w-56 border border-line rounded px-3 py-1.5 bg-white text-sm">
                 <option value="">Uncategorised</option>
                 {% for c in categories %}
                 <option value="{{ c.id }}">{{ c.name }}</option>
@@ -84,7 +84,7 @@
             <input type="text" name="line_desc" required placeholder="Description"
               class="flex-1 border border-line rounded px-3 py-1.5 bg-white text-sm" />
             <div class="flex items-center gap-2 sm:gap-3">
-              <select name="line_category" class="flex-1 sm:flex-none sm:w-40 border border-line rounded px-3 py-1.5 bg-white text-sm">
+              <select name="line_category" class="flex-1 sm:flex-none sm:w-56 border border-line rounded px-3 py-1.5 bg-white text-sm">
                 <option value="">Uncategorised</option>
                 {% for c in categories %}
                 <option value="{{ c.id }}">{{ c.name }}</option>
@@ -164,7 +164,7 @@
     <input type="text" name="line_desc" required placeholder="Description"
       class="flex-1 border border-line rounded px-3 py-1.5 bg-white text-sm" />
     <div class="flex items-center gap-2 sm:gap-3">
-      <select name="line_category" class="flex-1 sm:flex-none sm:w-40 border border-line rounded px-3 py-1.5 bg-white text-sm">
+      <select name="line_category" class="flex-1 sm:flex-none sm:w-56 border border-line rounded px-3 py-1.5 bg-white text-sm">
         <option value="">Uncategorised</option>
         {% for c in categories %}
         <option value="{{ c.id }}">{{ c.name }}</option>

@@ -2,7 +2,7 @@
 {% block title %}{% if transaction %}Edit income{% else %}Record income{% endif %} | {{ business_name() }}{% endblock %}
 {% block content %}
 
-<div class="max-w-2xl">
+<div class="max-w-4xl">
   <div class="flex flex-wrap items-center justify-between gap-3 mb-8">
     <h1 class="font-display text-2xl md:text-3xl font-semibold text-ink">{% if transaction %}Edit income{% else %}Record income{% endif %}</h1>
     {% if transaction and can_write %}
@@ -19,7 +19,7 @@
   <form method="post" action="{% if transaction %}/income/{{ transaction.id }}/edit{% else %}/income/new{% endif %}" class="space-y-6">
   <fieldset {% if not can_write %}disabled{% endif %} class="space-y-6 border-0 p-0 m-0">
 
-    <div class="grid grid-cols-1 sm:grid-cols-2 gap-5">
+    <div class="grid grid-cols-1 sm:grid-cols-2 gap-5 max-w-lg">
       <div>
         <label class="block text-xs uppercase tracking-wide text-ink/50 mb-1.5"><strong>Date</strong> <span class="text-rust">*</span></label>
         <input type="date" name="tx_date" required value="{% if transaction %}{{ transaction.date.isoformat() }}{% else %}{{ today }}{% endif %}"
@@ -47,7 +47,7 @@
             <input type="text" name="line_desc" required value="{{ li.description }}" placeholder="Description"
               class="flex-1 border border-line rounded px-3 py-1.5 bg-white text-sm" />
             <div class="flex items-center gap-2 sm:gap-3">
-              <select name="line_category" class="flex-1 sm:flex-none sm:w-44 border border-line rounded px-3 py-1.5 bg-white text-sm">
+              <select name="line_category" class="flex-1 sm:flex-none sm:w-56 border border-line rounded px-3 py-1.5 bg-white text-sm">
                 <option value="">Uncategorised</option>
                 <optgroup label="Income categories">
                   {% for c in categories.income %}
@@ -71,7 +71,7 @@
             <input type="text" name="line_desc" required placeholder="Description"
               class="flex-1 border border-line rounded px-3 py-1.5 bg-white text-sm" />
             <div class="flex items-center gap-2 sm:gap-3">
-              <select name="line_category" class="flex-1 sm:flex-none sm:w-44 border border-line rounded px-3 py-1.5 bg-white text-sm">
+              <select name="line_category" class="flex-1 sm:flex-none sm:w-56 border border-line rounded px-3 py-1.5 bg-white text-sm">
                 <option value="">Uncategorised</option>
                 <optgroup label="Income categories">
                   {% for c in categories.income %}
@@ -118,7 +118,7 @@
         {% if not transaction %}
         <p class="text-sm text-ink/50">Save this income record first, then come back here to generate an invoice.</p>
         {% else %}
-        <div class="grid grid-cols-1 sm:grid-cols-2 gap-5 mb-4">
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-5 mb-4 max-w-lg">
           <div>
             <label class="block text-xs uppercase tracking-wide text-ink/50 mb-1.5"><strong>Due date</strong></label>
             <input type="date" name="invoice_due_date" {% if not can_write %}disabled{% endif %} value="{{ transaction.invoice_due_date.isoformat() if transaction.invoice_due_date else '' }}"
@@ -160,7 +160,7 @@
     <input type="text" name="line_desc" required placeholder="Description"
       class="flex-1 border border-line rounded px-3 py-1.5 bg-white text-sm" />
     <div class="flex items-center gap-2 sm:gap-3">
-      <select name="line_category" class="flex-1 sm:flex-none sm:w-44 border border-line rounded px-3 py-1.5 bg-white text-sm">
+      <select name="line_category" class="flex-1 sm:flex-none sm:w-56 border border-line rounded px-3 py-1.5 bg-white text-sm">
         <option value="">Uncategorised</option>
         <optgroup label="Income categories">
           {% for c in categories.income %}
