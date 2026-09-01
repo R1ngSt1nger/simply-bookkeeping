@@ -161,24 +161,17 @@ def create_income(
 
 
 @router.get("/{tx_id}/edit", response_class=HTMLResponse)
-def edit_income_form(tx_id: int, request: Request, success: str = None, error: str = None, db: Session = Depends(get_db), control_db: Session = Depends(get_control_db), user=Depends(require_login)):
+def edit_income_form(tx_id: int, request: Request, db: Session = Depends(get_db), control_db: Session = Depends(get_control_db), user=Depends(require_login)):
     from ..settings_helper import get_app_settings
     from ..email_sender import is_smtp_configured
     tx = db.query(models.IncomeTransaction).filter(models.IncomeTransaction.id == tx_id).first()
     audit_log = db.query(models.AuditLogEntry).filter(
         models.AuditLogEntry.record_type == "income", models.AuditLogEntry.record_id == tx_id
     ).order_by(models.AuditLogEntry.created_at.desc()).all() if tx else []
-    success_map = {"invoice_emailed": "Invoice emailed to customer."}
-    error_map = {
-        "no_email": "This customer doesn't have an email address on file.",
-        "smtp_not_configured": "SMTP isn't configured yet — set it up in Settings first.",
-        "send_failed": "Something went wrong sending that email — please try again.",
-    }
     return render(request, "income_form.html", {
         "request": request, "user": user, "transaction": tx, "today": date.today().isoformat(),
         "contacts": _contacts_for_picker(db), "selected_contact": tx.contact if tx else None,
-        "categories": _line_item_categories(db), "error": error_map.get(error),
-        "success": success_map.get(success),
+        "categories": _line_item_categories(db), "error": None,
         "payment_methods": _payment_method_names(db),
         "can_write": user.role in ("owner", "bookkeeper"),
         "quote_prefill": None, "audit_log": audit_log,
@@ -281,6 +274,7 @@ def invoice_pdf(tx_id: int, request: Request, db: Session = Depends(get_db), use
 
 @router.post("/{tx_id}/email-invoice")
 def email_invoice(tx_id: int, request: Request, db: Session = Depends(get_db), control_db: Session = Depends(get_control_db), user=Depends(require_write)):
+    from fastapi.responses import JSONResponse
     from ..settings_helper import get_active_business, active_theme_key
     from ..pdf_generation import generate_invoice_pdf
     from ..email_sender import send_email, is_smtp_configured
@@ -288,11 +282,11 @@ def email_invoice(tx_id: int, request: Request, db: Session = Depends(get_db), c
 
     tx = db.query(models.IncomeTransaction).filter(models.IncomeTransaction.id == tx_id).first()
     if not tx or not tx.contact or not tx.contact.email:
-        return RedirectResponse(f"/income/{tx_id}/edit?error=no_email", status_code=303)
+        return JSONResponse({"success": False, "message": "This customer doesn't have an email address on file."}, status_code=400)
 
     settings = get_app_settings(control_db)
     if not is_smtp_configured(settings):
-        return RedirectResponse(f"/income/{tx_id}/edit?error=smtp_not_configured", status_code=303)
+        return JSONResponse({"success": False, "message": "SMTP isn't configured yet — set it up in Settings first."}, status_code=400)
 
     biz = get_active_business(request)
     pdf_bytes = generate_invoice_pdf(tx, biz, active_theme_key(request))
@@ -309,9 +303,9 @@ def email_invoice(tx_id: int, request: Request, db: Session = Depends(get_db), c
     """
     try:
         send_email(settings, tx.contact.email, f"Invoice {tx.invoice_number or ''} from {biz.name}".strip(), html_body, attachments=[(filename, pdf_bytes)])
-    except Exception:
-        return RedirectResponse(f"/income/{tx_id}/edit?error=send_failed", status_code=303)
+    except Exception as e:
+        return JSONResponse({"success": False, "message": f"Something went wrong sending that email: {e}"}, status_code=502)
 
     db.add(models.AuditLogEntry(record_type="income", record_id=tx.id, event=f"Invoice emailed to {tx.contact.email}"))
     db.commit()
-    return RedirectResponse(f"/income/{tx_id}/edit?success=invoice_emailed", status_code=303)
+    return JSONResponse({"success": True, "message": f"Invoice successfully emailed to {tx.contact.email}."})

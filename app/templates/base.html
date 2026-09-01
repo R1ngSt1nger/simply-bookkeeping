@@ -246,6 +246,54 @@
   });
 </script>
 
+<!-- Reusable "sending an email" status modal — shows a spinner while the request is
+     in flight, then updates in place to a success or error message. Used by both the
+     Income and Quote "email to customer" buttons. -->
+<div id="email-status-backdrop" class="hidden fixed inset-0 bg-ink/40 z-50 flex items-center justify-center p-4">
+  <div class="bg-white rounded-lg shadow-xl max-w-sm w-full p-6 text-center">
+    <div id="email-status-spinner" class="flex justify-center mb-3">
+      <svg class="animate-spin text-accent" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M21 12a9 9 0 1 1-9-9"/></svg>
+    </div>
+    <h3 id="email-status-title" class="font-display text-lg font-semibold text-ink mb-2"></h3>
+    <p id="email-status-message" class="text-sm text-ink/60 mb-5"></p>
+    <div id="email-status-dismiss-wrap" class="hidden justify-center">
+      <button type="button" onclick="closeEmailStatusModal()" class="text-sm text-white px-4 py-2 rounded bg-accent hover:bg-accentdeep transition-colors">Dismiss</button>
+    </div>
+  </div>
+</div>
+
+<script>
+  function openEmailStatusModal(state, title, message) {
+    document.getElementById('email-status-title').textContent = title;
+    document.getElementById('email-status-message').textContent = message;
+    document.getElementById('email-status-spinner').classList.toggle('hidden', state !== 'sending');
+    const dismissWrap = document.getElementById('email-status-dismiss-wrap');
+    dismissWrap.classList.toggle('hidden', state === 'sending');
+    dismissWrap.classList.toggle('flex', state !== 'sending');
+    document.getElementById('email-status-backdrop').classList.remove('hidden');
+  }
+  function closeEmailStatusModal() {
+    document.getElementById('email-status-backdrop').classList.add('hidden');
+  }
+
+  function sendEmailWithStatus(url, sendingTitle, sendingMessage, successTitle) {
+    openEmailStatusModal('sending', sendingTitle, sendingMessage);
+    fetch(url, { method: 'POST', headers: { 'Accept': 'application/json' } })
+      .then(async (resp) => {
+        let data;
+        try { data = await resp.json(); } catch (e) { data = null; }
+        if (resp.ok && data && data.success) {
+          openEmailStatusModal('success', successTitle, data.message || 'Sent successfully.');
+        } else {
+          openEmailStatusModal('error', "Couldn't send email", (data && data.message) || 'Something went wrong sending that email — please try again.');
+        }
+      })
+      .catch(() => {
+        openEmailStatusModal('error', "Couldn't send email", 'Something went wrong sending that email — please check your connection and try again.');
+      });
+  }
+</script>
+
 <script>
   let _confirmModalForm = null;
   let _confirmModalExpectedText = null;

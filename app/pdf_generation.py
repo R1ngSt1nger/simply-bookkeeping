@@ -343,10 +343,6 @@ def generate_quote_pdf(quote, biz, theme_key) -> bytes:
             y -= 4.5 * mm
         y -= 4 * mm
 
-    c.setFont("Helvetica-Oblique", 8)
-    c.setFillColor(grey)
-    c.drawString(left, 15 * mm, "This is a quote, not a tax invoice, and is subject to change.")
-
     c.showPage()
     c.save()
     return buf.getvalue()

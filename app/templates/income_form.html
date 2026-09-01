@@ -15,9 +15,6 @@
   {% if error %}
   <div class="text-sm text-rust bg-rustlight/40 border border-rust/30 rounded px-3 py-2 mb-6">{{ error }}</div>
   {% endif %}
-  {% if success %}
-  <div class="text-sm text-accent bg-accentlight/40 border border-accent/30 rounded px-3 py-2 mb-6">{{ success }}</div>
-  {% endif %}
   {% if quote_prefill %}
   <div class="text-sm text-accent bg-accentlight/40 border border-accent/30 rounded px-3 py-2 mb-6">Pre-filled from quote {{ quote_prefill.reference }} — review everything below, assign categories, then save.</div>
   {% endif %}
@@ -168,7 +165,7 @@
         </div>
         {% if can_write %}
         <div class="flex flex-wrap gap-3">
-          <button type="submit" name="generate_invoice" value="1" onclick="this.form.target='_blank';" class="bg-accent text-white text-sm font-medium px-4 py-2.5 rounded hover:bg-accentdeep transition-colors">
+          <button type="submit" name="generate_invoice" value="1" formtarget="_blank" class="bg-accent text-white text-sm font-medium px-4 py-2.5 rounded hover:bg-accentdeep transition-colors">
             {% if transaction.invoice_number %}View Invoice{% else %}Generate Invoice{% endif %}
           </button>
           {% if not (transaction.contact and transaction.contact.email) %}
@@ -178,7 +175,7 @@
           {% elif not smtp_configured %}
           <button type="button" onclick="emailInvoiceBlockedNoSmtp()" class="border border-line text-ink/40 text-sm font-medium px-4 py-2.5 rounded hover:bg-papercard transition-colors">Email invoice to customer</button>
           {% else %}
-          <button type="submit" form="email-invoice-form" class="border border-accent text-accent text-sm font-medium px-4 py-2.5 rounded hover:bg-accentlight/30 transition-colors">Email invoice to customer</button>
+          <button type="button" onclick="sendEmailWithStatus('/income/{{ transaction.id }}/email-invoice', 'Emailing invoice to customer', 'Please wait…', 'Email sent')" class="border border-accent text-accent text-sm font-medium px-4 py-2.5 rounded hover:bg-accentlight/30 transition-colors">Email invoice to customer</button>
           {% endif %}
         </div>
         <p class="text-xs text-ink/40 mt-2">Opens the invoice as a PDF in a new tab. Any unsaved changes above are saved first.</p>
@@ -197,7 +194,7 @@
       {% if audit_log %}
       <div class="space-y-1.5">
         {% for entry in audit_log %}
-        <p class="text-xs text-ink/50">{{ (entry.created_at | local_dt).strftime('%d %b %Y, %I:%M %p') }} — {{ entry.event }}</p>
+        <p class="text-xs text-ink/50">{{ (entry.created_at | local_dt).strftime('%d %b %Y, %H:%M') }} - {{ entry.event }}</p>
         {% endfor %}
       </div>
       {% else %}
@@ -215,9 +212,6 @@
       <a href="/income" class="text-center text-sm text-ink/50 hover:text-ink px-5 py-2.5">{% if can_write %}Cancel{% else %}Back{% endif %}</a>
     </div>
   </form>
-  {% if transaction %}
-  <form method="post" action="/income/{{ transaction.id }}/email-invoice" id="email-invoice-form" style="display:none"></form>
-  {% endif %}
 </div>
 
 <template id="line-template">

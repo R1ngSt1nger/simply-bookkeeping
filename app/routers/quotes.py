@@ -103,26 +103,20 @@ def create_quote(
 
 
 @router.get("/{quote_id}/edit", response_class=HTMLResponse)
-def edit_quote_form(quote_id: int, request: Request, success: str = None, error: str = None, db: Session = Depends(get_db), control_db: Session = Depends(get_control_db), user=Depends(require_login)):
+def edit_quote_form(quote_id: int, request: Request, db: Session = Depends(get_db), control_db: Session = Depends(get_control_db), user=Depends(require_login)):
     quote = db.query(models.Quote).filter(models.Quote.id == quote_id).first()
     if not quote:
         return RedirectResponse("/quotes", status_code=303)
     audit_log = db.query(models.AuditLogEntry).filter(
         models.AuditLogEntry.record_type == "quote", models.AuditLogEntry.record_id == quote_id
     ).order_by(models.AuditLogEntry.created_at.desc()).all()
-    success_map = {"quote_emailed": "Quote emailed to customer."}
-    error_map = {
-        "no_email": "This customer doesn't have an email address on file.",
-        "smtp_not_configured": "SMTP isn't configured yet — set it up in Settings first.",
-        "send_failed": "Something went wrong sending that email — please try again.",
-    }
     from ..settings_helper import get_app_settings
     from ..email_sender import is_smtp_configured
     return render(request, "quote_form.html", {
         "request": request, "user": user, "quote": quote, "today": date.today().isoformat(),
         "expiry_default": quote.expiry_date.isoformat() if quote.expiry_date else "",
         "contacts": _contacts_for_picker(db), "selected_contact": quote.contact,
-        "error": error_map.get(error), "success": success_map.get(success),
+        "error": None,
         "can_write": user.role in ("owner", "bookkeeper") and quote.status != "accepted",
         "audit_log": audit_log,
         "smtp_configured": is_smtp_configured(get_app_settings(control_db)),
@@ -203,17 +197,18 @@ def quote_pdf(quote_id: int, request: Request, db: Session = Depends(get_db), us
 
 @router.post("/{quote_id}/email")
 def email_quote(quote_id: int, request: Request, db: Session = Depends(get_db), control_db: Session = Depends(get_control_db), user=Depends(require_write)):
+    from fastapi.responses import JSONResponse
     from ..settings_helper import get_active_business, active_theme_key, get_app_settings
     from ..pdf_generation import generate_quote_pdf
     from ..email_sender import send_email, is_smtp_configured
 
     quote = db.query(models.Quote).filter(models.Quote.id == quote_id).first()
     if not quote or not quote.contact or not quote.contact.email:
-        return RedirectResponse(f"/quotes/{quote_id}/edit?error=no_email", status_code=303)
+        return JSONResponse({"success": False, "message": "This customer doesn't have an email address on file."}, status_code=400)
 
     settings = get_app_settings(control_db)
     if not is_smtp_configured(settings):
-        return RedirectResponse(f"/quotes/{quote_id}/edit?error=smtp_not_configured", status_code=303)
+        return JSONResponse({"success": False, "message": "SMTP isn't configured yet — set it up in Settings first."}, status_code=400)
 
     biz = get_active_business(request)
     pdf_bytes = generate_quote_pdf(quote, biz, active_theme_key(request))
@@ -232,9 +227,9 @@ def email_quote(quote_id: int, request: Request, db: Session = Depends(get_db), 
     """
     try:
         send_email(settings, quote.contact.email, f"Quote {quote.quote_number} from {biz.name}", html_body, attachments=[(filename, pdf_bytes)])
-    except Exception:
-        return RedirectResponse(f"/quotes/{quote_id}/edit?error=send_failed", status_code=303)
+    except Exception as e:
+        return JSONResponse({"success": False, "message": f"Something went wrong sending that email: {e}"}, status_code=502)
 
     db.add(models.AuditLogEntry(record_type="quote", record_id=quote.id, event=f"Quote emailed to {quote.contact.email}"))
     db.commit()
-    return RedirectResponse(f"/quotes/{quote_id}/edit?success=quote_emailed", status_code=303)
+    return JSONResponse({"success": True, "message": f"Quote successfully emailed to {quote.contact.email}."})
