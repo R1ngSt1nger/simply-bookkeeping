@@ -13,7 +13,7 @@ There's no Payroll, GST, BAS or any other bloat which many small businesses don'
 * Record income with itemised, categorised line items
 * Supports positive and negative amounts for adjustments, fees and discounts
 * Track full or partial payments and balances due
-* Ability to create quotes, output to PDF and email directly to the prospective customer
+* Create quotes, output to PDF and email directly to the contact
 
 ### 
 
@@ -27,15 +27,15 @@ There's no Payroll, GST, BAS or any other bloat which many small businesses don'
 
 ### 
 
-### Customer Invoices
+### Invoices
 
-Generate a customer-ready PDF invoice directly from an income record.
+Generate a customer-ready PDF invoice directly from an income record. Email it directly to them from the app.
 
 Invoices can include your business logo/branding, contact information and payment details.
 
 ### 
 
-### Profit \& Loss Reports
+### Profit \& Loss Report
 
 View financial performance broken down by category.
 
@@ -52,4 +52,4 @@ Maintain a contacts database for individuals and companies, with linked financia
 ### Multiple Businesses
 
 Manage multiple businesses from one Simply Bookkeeping installation. Each business has its own financial records, contacts, categories, attachments, branding and payment details.
-
+Multiple user accounts are supported, with granular access to the businesses you choose. Read only accountant logons are also supported.
