@@ -13,6 +13,7 @@ There's no Payroll, GST, BAS or any other bloat which many small businesses don'
 * Record income with itemised, categorised line items
 * Supports positive and negative amounts for adjustments, fees and discounts
 * Track full or partial payments and balances due
+* Ability to create quotes, output to PDF and email directly to the prospective customer
 
 ### 
 
@@ -22,7 +23,7 @@ There's no Payroll, GST, BAS or any other bloat which many small businesses don'
 * Track payments and outstanding balances
 * Attach invoices, receipts and other documentation
 * Use the Uploads holding area to keep documents ready to be matched to expense records
-* OCR will attempt to extract information from uploaded invoices in the holding area
+* OCR will extract information from uploaded invoices in the holding area, and data-match it in a newly created income record (note that the success of the OCR module is dependent on the layout of the supplier's invoice)
 
 ### 
 
