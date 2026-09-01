@@ -171,12 +171,14 @@
           <button type="submit" name="generate_invoice" value="1" onclick="this.form.target='_blank';" class="bg-accent text-white text-sm font-medium px-4 py-2.5 rounded hover:bg-accentdeep transition-colors">
             {% if transaction.invoice_number %}View Invoice{% else %}Generate Invoice{% endif %}
           </button>
-          {% if transaction.contact and transaction.contact.email %}
-          <form method="post" action="/income/{{ transaction.id }}/email-invoice">
-            <button type="submit" class="border border-accent text-accent text-sm font-medium px-4 py-2.5 rounded hover:bg-accentlight/30 transition-colors">Email invoice to customer</button>
-          </form>
-          {% else %}
+          {% if not (transaction.contact and transaction.contact.email) %}
           <button type="button" disabled title="This customer doesn't have an email address on file" class="border border-line text-ink/30 text-sm font-medium px-4 py-2.5 rounded cursor-not-allowed">Email invoice to customer</button>
+          {% elif not transaction.invoice_number %}
+          <button type="button" onclick="emailInvoiceBlockedNoInvoice()" class="border border-line text-ink/40 text-sm font-medium px-4 py-2.5 rounded hover:bg-papercard transition-colors">Email invoice to customer</button>
+          {% elif not smtp_configured %}
+          <button type="button" onclick="emailInvoiceBlockedNoSmtp()" class="border border-line text-ink/40 text-sm font-medium px-4 py-2.5 rounded hover:bg-papercard transition-colors">Email invoice to customer</button>
+          {% else %}
+          <button type="submit" form="email-invoice-form" class="border border-accent text-accent text-sm font-medium px-4 py-2.5 rounded hover:bg-accentlight/30 transition-colors">Email invoice to customer</button>
           {% endif %}
         </div>
         <p class="text-xs text-ink/40 mt-2">Opens the invoice as a PDF in a new tab. Any unsaved changes above are saved first.</p>
@@ -190,12 +192,12 @@
     </details>
 
     {% if transaction %}
-    <div class="ledger-rule-thick pt-4">
+    <div class="ledger-rule-thick mt-4 pt-4">
       <h2 class="text-xs uppercase tracking-wide text-ink/50 mb-3"><strong>Audit log</strong></h2>
       {% if audit_log %}
       <div class="space-y-1.5">
         {% for entry in audit_log %}
-        <p class="text-xs text-ink/50">{{ entry.created_at.strftime('%d %b %Y, %I:%M %p') }} — {{ entry.event }}</p>
+        <p class="text-xs text-ink/50">{{ (entry.created_at | local_dt).strftime('%d %b %Y, %I:%M %p') }} — {{ entry.event }}</p>
         {% endfor %}
       </div>
       {% else %}
@@ -213,6 +215,9 @@
       <a href="/income" class="text-center text-sm text-ink/50 hover:text-ink px-5 py-2.5">{% if can_write %}Cancel{% else %}Back{% endif %}</a>
     </div>
   </form>
+  {% if transaction %}
+  <form method="post" action="/income/{{ transaction.id }}/email-invoice" id="email-invoice-form" style="display:none"></form>
+  {% endif %}
 </div>
 
 <template id="line-template">
@@ -254,6 +259,12 @@
       btn.closest('.line-item').remove();
       recalc();
     }
+  }
+  function emailInvoiceBlockedNoInvoice() {
+    openBlockedModal('Invoice not generated yet', 'You need to generate the invoice before you can email it to the customer.');
+  }
+  function emailInvoiceBlockedNoSmtp() {
+    openBlockedModal('SMTP not configured', 'An SMTP server needs to be configured to use this feature. <a href="/settings#smtp" class="text-accent underline">Configure this in Settings</a>.');
   }
   function updateGhost(el) {
     const isDefault = el.value.trim() === '' || parseFloat(el.value) === 0;

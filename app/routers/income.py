@@ -93,7 +93,7 @@ def new_income_form(request: Request, from_quote: int = None, db: Session = Depe
         "contacts": _contacts_for_picker(db), "selected_contact": selected_contact,
         "categories": _line_item_categories(db), "error": None,
         "payment_methods": _payment_method_names(db), "can_write": True,
-        "quote_prefill": quote_prefill, "audit_log": [],
+        "quote_prefill": quote_prefill, "audit_log": [], "smtp_configured": False,
     })
 
 
@@ -119,7 +119,7 @@ def create_income(
             "request": request, "user": user, "transaction": None, "today": tx_date or date.today().isoformat(),
             "contacts": _contacts_for_picker(db), "selected_contact": None,
             "categories": _line_item_categories(db), "error": "Please choose a customer.",
-            "payment_methods": _payment_method_names(db), "can_write": True, "quote_prefill": None, "audit_log": [],
+            "payment_methods": _payment_method_names(db), "can_write": True, "quote_prefill": None, "audit_log": [], "smtp_configured": False,
         }, status_code=400)
 
     tx = models.IncomeTransaction(
@@ -161,7 +161,9 @@ def create_income(
 
 
 @router.get("/{tx_id}/edit", response_class=HTMLResponse)
-def edit_income_form(tx_id: int, request: Request, success: str = None, error: str = None, db: Session = Depends(get_db), user=Depends(require_login)):
+def edit_income_form(tx_id: int, request: Request, success: str = None, error: str = None, db: Session = Depends(get_db), control_db: Session = Depends(get_control_db), user=Depends(require_login)):
+    from ..settings_helper import get_app_settings
+    from ..email_sender import is_smtp_configured
     tx = db.query(models.IncomeTransaction).filter(models.IncomeTransaction.id == tx_id).first()
     audit_log = db.query(models.AuditLogEntry).filter(
         models.AuditLogEntry.record_type == "income", models.AuditLogEntry.record_id == tx_id
@@ -180,6 +182,7 @@ def edit_income_form(tx_id: int, request: Request, success: str = None, error: s
         "payment_methods": _payment_method_names(db),
         "can_write": user.role in ("owner", "bookkeeper"),
         "quote_prefill": None, "audit_log": audit_log,
+        "smtp_configured": is_smtp_configured(get_app_settings(control_db)),
     })
 
 
@@ -210,7 +213,7 @@ def update_income(
             "contacts": _contacts_for_picker(db), "selected_contact": tx.contact if tx else None,
             "categories": _line_item_categories(db), "error": "Please choose a customer.",
             "payment_methods": _payment_method_names(db), "can_write": True,
-            "quote_prefill": None, "audit_log": [],
+            "quote_prefill": None, "audit_log": [], "smtp_configured": False,
         }, status_code=400)
 
     tx.date = datetime.strptime(tx_date, "%Y-%m-%d").date()
@@ -238,6 +241,7 @@ def update_income(
 
     if generate_invoice and not tx.invoice_number:
         tx.invoice_number = claim_invoice_number(db)
+        db.add(models.AuditLogEntry(record_type="income", record_id=tx.id, event=f"Invoice {tx.invoice_number} created"))
 
     db.commit()
 

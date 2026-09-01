@@ -59,7 +59,7 @@ def new_quote_form(request: Request, db: Session = Depends(get_db), user=Depends
         "request": request, "user": user, "quote": None, "today": date.today().isoformat(),
         "expiry_default": (date.today() + timedelta(days=14)).isoformat(),
         "contacts": _contacts_for_picker(db), "selected_contact": None,
-        "error": None, "success": None, "can_write": True, "audit_log": [],
+        "error": None, "success": None, "can_write": True, "audit_log": [], "smtp_configured": False,
     })
 
 
@@ -79,7 +79,7 @@ def create_quote(
         return render(request, "quote_form.html", {
             "request": request, "user": user, "quote": None, "today": q_date or date.today().isoformat(),
             "expiry_default": expiry_date, "contacts": _contacts_for_picker(db), "selected_contact": None,
-            "error": "Please choose a customer.", "success": None, "can_write": True, "audit_log": [],
+            "error": "Please choose a customer.", "success": None, "can_write": True, "audit_log": [], "smtp_configured": False,
         }, status_code=400)
 
     quote = models.Quote(
@@ -103,7 +103,7 @@ def create_quote(
 
 
 @router.get("/{quote_id}/edit", response_class=HTMLResponse)
-def edit_quote_form(quote_id: int, request: Request, success: str = None, error: str = None, db: Session = Depends(get_db), user=Depends(require_login)):
+def edit_quote_form(quote_id: int, request: Request, success: str = None, error: str = None, db: Session = Depends(get_db), control_db: Session = Depends(get_control_db), user=Depends(require_login)):
     quote = db.query(models.Quote).filter(models.Quote.id == quote_id).first()
     if not quote:
         return RedirectResponse("/quotes", status_code=303)
@@ -116,6 +116,8 @@ def edit_quote_form(quote_id: int, request: Request, success: str = None, error:
         "smtp_not_configured": "SMTP isn't configured yet — set it up in Settings first.",
         "send_failed": "Something went wrong sending that email — please try again.",
     }
+    from ..settings_helper import get_app_settings
+    from ..email_sender import is_smtp_configured
     return render(request, "quote_form.html", {
         "request": request, "user": user, "quote": quote, "today": date.today().isoformat(),
         "expiry_default": quote.expiry_date.isoformat() if quote.expiry_date else "",
@@ -123,6 +125,7 @@ def edit_quote_form(quote_id: int, request: Request, success: str = None, error:
         "error": error_map.get(error), "success": success_map.get(success),
         "can_write": user.role in ("owner", "bookkeeper") and quote.status != "accepted",
         "audit_log": audit_log,
+        "smtp_configured": is_smtp_configured(get_app_settings(control_db)),
     })
 
 
@@ -149,7 +152,7 @@ def update_quote(
         return render(request, "quote_form.html", {
             "request": request, "user": user, "quote": quote, "today": date.today().isoformat(),
             "expiry_default": expiry_date, "contacts": _contacts_for_picker(db), "selected_contact": quote.contact,
-            "error": "Please choose a customer.", "success": None, "can_write": True, "audit_log": [],
+            "error": "Please choose a customer.", "success": None, "can_write": True, "audit_log": [], "smtp_configured": False,
         }, status_code=400)
 
     quote.date = datetime.strptime(q_date, "%Y-%m-%d").date()

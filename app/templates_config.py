@@ -1,6 +1,7 @@
 import os
 from fastapi.templating import Jinja2Templates
 import json
+from datetime import timezone
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 templates = Jinja2Templates(directory=os.path.join(BASE_DIR, "app", "templates"))
@@ -15,11 +16,26 @@ def money(value):
     return f"-${formatted}" if neg else f"${formatted}"
 
 
+def local_dt(value):
+    """Convert a stored UTC timestamp (e.g. audit log entries) to the
+    container's local time for display. SQLite/SQLAlchemy silently strips
+    timezone info on round-trip even though these are always stored via
+    datetime.now(timezone.utc) — so a naive value here is UTC, not local,
+    and must be explicitly labelled as UTC before converting, or
+    .astimezone() would treat it as already-local and do nothing."""
+    if value is None:
+        return value
+    if value.tzinfo is None:
+        value = value.replace(tzinfo=timezone.utc)
+    return value.astimezone()
+
+
 def tojson_filter(value):
     return json.dumps(value)
 
 
 templates.env.filters["money"] = money
+templates.env.filters["local_dt"] = local_dt
 templates.env.filters["tojson"] = tojson_filter
 
 

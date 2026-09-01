@@ -218,6 +218,34 @@
   </div>
 </div>
 
+<!-- Reusable "action blocked" modal — for things like "SMTP isn't configured" where the
+     message needs a real link (e.g. to Settings), unlike the plain-text info modal above -->
+<div id="blocked-modal-backdrop" class="hidden fixed inset-0 bg-ink/40 z-50 flex items-center justify-center p-4">
+  <div class="bg-white rounded-lg shadow-xl max-w-sm w-full p-6">
+    <h3 id="blocked-modal-title" class="font-display text-lg font-semibold text-ink mb-2"></h3>
+    <p id="blocked-modal-message" class="text-sm text-ink/60 mb-5"></p>
+    <div class="flex justify-end">
+      <button type="button" onclick="closeBlockedModal()" class="text-sm text-white px-4 py-2 rounded bg-accent hover:bg-accentdeep transition-colors">Dismiss</button>
+    </div>
+  </div>
+</div>
+
+<script>
+  function openBlockedModal(title, htmlMessage) {
+    document.getElementById('blocked-modal-title').textContent = title;
+    document.getElementById('blocked-modal-message').innerHTML = htmlMessage;
+    document.getElementById('blocked-modal-backdrop').classList.remove('hidden');
+  }
+  function closeBlockedModal() {
+    document.getElementById('blocked-modal-backdrop').classList.add('hidden');
+  }
+  document.addEventListener('DOMContentLoaded', () => {
+    document.getElementById('blocked-modal-backdrop').addEventListener('click', (e) => {
+      if (e.target.id === 'blocked-modal-backdrop') closeBlockedModal();
+    });
+  });
+</script>
+
 <script>
   let _confirmModalForm = null;
   let _confirmModalExpectedText = null;
