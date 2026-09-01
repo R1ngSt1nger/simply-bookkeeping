@@ -35,10 +35,14 @@
       </div>
     </div>
 
-    {% set picker_label = "Supplier" %}
-    {% set picker_required = true %}
-    {% set picker_contact_type = "supplier" %}
-    {% include "_contact_picker.html" %}
+    <div class="max-w-lg">
+      {% set picker_label = "Supplier" %}
+      {% set picker_required = true %}
+      {% set picker_contact_type = "supplier" %}
+      {% include "_contact_picker.html" %}
+    </div>
+
+    <div class="ledger-rule-thick"></div>
 
     <div>
       <label class="block text-xs uppercase tracking-wide text-ink/50 mb-2"><strong>Line items</strong> <span class="text-rust">*</span></label>

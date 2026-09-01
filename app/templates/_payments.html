@@ -1,7 +1,7 @@
 {# Expects: payments (list of payment objects or empty), payment_methods (list of name strings),
    today (ISO date string).
    Optional: payments_heading (default "Payments received"), amount_label (default "Amount received") #}
-<div class="bg-papercard border border-line rounded-lg p-5">
+<div class="bg-papercard border border-line rounded-lg p-5 max-w-2xl">
   <div class="flex items-center justify-between mb-3">
     <label class="text-xs uppercase tracking-wide text-ink/50"><strong>{{ payments_heading | default("Payments received") }}</strong></label>
   </div>
@@ -13,7 +13,7 @@
         <input type="date" name="payment_date" required value="{{ p.date.isoformat() }}" onchange="recalc()"
           class="flex-1 sm:flex-none sm:w-40 border border-line rounded px-3 py-1.5 bg-white text-sm" />
         <input type="number" step="0.01" name="payment_amount" required value="{{ p.amount }}" oninput="recalc()"
-          class="payment-amount-input num flex-1 border border-line rounded px-3 py-1.5 bg-white text-sm text-right" />
+          class="payment-amount-input num flex-1 sm:flex-none sm:w-32 border border-line rounded px-3 py-1.5 bg-white text-sm text-right" />
       </div>
       <div class="flex items-center gap-2 sm:gap-3">
         <select name="payment_method" class="flex-1 sm:flex-none sm:w-48 border border-line rounded px-3 py-1.5 bg-white text-sm">
@@ -50,7 +50,7 @@
       <input type="date" name="payment_date" required value="{{ today }}" onchange="recalc()"
         class="flex-1 sm:flex-none sm:w-40 border border-line rounded px-3 py-1.5 bg-white text-sm" />
       <input type="number" step="0.01" name="payment_amount" required value="0.00" oninput="recalc()"
-        class="payment-amount-input num flex-1 border border-line rounded px-3 py-1.5 bg-white text-sm text-right" />
+        class="payment-amount-input num flex-1 sm:flex-none sm:w-32 border border-line rounded px-3 py-1.5 bg-white text-sm text-right" />
     </div>
     <div class="flex items-center gap-2 sm:gap-3">
       <select name="payment_method" class="flex-1 sm:flex-none sm:w-48 border border-line rounded px-3 py-1.5 bg-white text-sm">
