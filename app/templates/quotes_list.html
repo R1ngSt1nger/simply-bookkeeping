@@ -1,0 +1,121 @@
+{% extends "base.html" %}
+{% block title %}Quotes | {{ business_name() }}{% endblock %}
+{% block content %}
+
+<div class="flex flex-col gap-3 mb-8 sm:flex-row sm:items-end sm:justify-between">
+  <h1 class="font-display text-2xl md:text-3xl font-semibold text-ink">Quotes</h1>
+  {% if user.role in ['owner', 'bookkeeper'] %}
+  <a href="/quotes/new" class="inline-block text-center bg-accent text-white text-sm font-medium px-4 py-2.5 rounded hover:bg-accentdeep transition-colors">Create quote</a>
+  {% endif %}
+</div>
+
+<form method="get" action="/quotes" class="flex flex-wrap items-end gap-3 mb-6 bg-papercard border border-line rounded-lg p-4">
+  <div>
+    <label class="block text-xs uppercase tracking-wide text-ink/50 mb-1.5"><strong>Date range</strong></label>
+    <select name="range" id="range-select" onchange="toggleCustomRange()" class="border border-line rounded px-3 py-2 bg-white text-ink text-sm">
+      {% for key, label in range_labels.items() %}
+      <option value="{{ key }}" {% if selected_range == key %}selected{% endif %}>{{ label }}</option>
+      {% endfor %}
+    </select>
+  </div>
+  <div id="custom-range-fields" class="flex items-end gap-3 {% if selected_range != 'custom' %}hidden{% endif %}">
+    <div>
+      <label class="block text-xs uppercase tracking-wide text-ink/50 mb-1.5"><strong>From</strong></label>
+      <input type="date" name="custom_start" value="{{ custom_start }}" class="border border-line rounded px-3 py-2 bg-white text-ink text-sm" />
+    </div>
+    <div>
+      <label class="block text-xs uppercase tracking-wide text-ink/50 mb-1.5"><strong>To</strong></label>
+      <input type="date" name="custom_end" value="{{ custom_end }}" class="border border-line rounded px-3 py-2 bg-white text-ink text-sm" />
+    </div>
+  </div>
+  <div>
+    <label class="block text-xs uppercase tracking-wide text-ink/50 mb-1.5"><strong>Customer</strong></label>
+    <input type="text" name="customer" value="{{ customer_query }}" placeholder="Search by customer"
+      class="border border-line rounded px-3 py-2 bg-white text-ink text-sm" />
+  </div>
+  <div>
+    <label class="block text-xs uppercase tracking-wide text-ink/50 mb-1.5"><strong>Status</strong></label>
+    <select name="status" class="border border-line rounded px-3 py-2 bg-white text-ink text-sm">
+      <option value="all" {% if selected_status == 'all' %}selected{% endif %}>All</option>
+      <option value="pending" {% if selected_status == 'pending' %}selected{% endif %}>Pending</option>
+      <option value="accepted" {% if selected_status == 'accepted' %}selected{% endif %}>Accepted</option>
+    </select>
+  </div>
+  <button type="submit" class="border border-accent text-accent text-sm font-medium px-4 py-2 rounded hover:bg-accentlight/30">Apply</button>
+  {% if (selected_range and selected_range != 'all') or customer_query or (selected_status and selected_status != 'all') %}
+  <a href="/quotes" class="text-sm text-ink/50 hover:text-ink px-2 py-2">Clear filters</a>
+  {% endif %}
+</form>
+
+{% if quotes %}
+<!-- Desktop table -->
+<div class="hidden md:block bg-papercard border border-line rounded-lg overflow-hidden">
+  <table class="w-full text-sm">
+    <thead>
+      <tr class="border-b border-line text-left text-xs uppercase tracking-wide text-ink/40">
+        <th class="px-5 py-3 font-medium"><strong>Date</strong></th>
+        <th class="px-5 py-3 font-medium"><strong>Quote number</strong></th>
+        <th class="px-5 py-3 font-medium"><strong>Customer</strong></th>
+        <th class="px-5 py-3 font-medium"><strong>Status</strong></th>
+        <th class="px-5 py-3 font-medium text-right"><strong>Amount</strong></th>
+      </tr>
+    </thead>
+    <tbody class="divide-y divide-line">
+      {% for quote in quotes %}
+      <tr class="hover:bg-white transition-colors cursor-pointer" onclick="window.location='/quotes/{{ quote.id }}/edit'">
+        <td class="px-5 py-4 whitespace-nowrap">{{ quote.date.strftime('%d %b %Y') }}</td>
+        <td class="px-5 py-4 num">{{ quote.quote_number }}</td>
+        <td class="px-5 py-4 font-medium">
+          {% if quote.contact %}<a href="/contacts/{{ quote.contact.id }}" class="text-brass hover:underline" onclick="event.stopPropagation()">{{ quote.contact.display_name }}</a>{% else %}<span class="text-ink/30">—</span>{% endif %}
+        </td>
+        <td class="px-5 py-4">
+          {% if quote.status == 'accepted' %}
+          <span class="text-xs uppercase tracking-wide text-brass bg-brasslight/30 px-2 py-0.5 rounded-full">Accepted</span>
+          {% elif quote.is_expired %}
+          <span class="text-xs uppercase tracking-wide text-rust bg-rustlight/30 px-2 py-0.5 rounded-full">Expired</span>
+          {% else %}
+          <span class="text-xs uppercase tracking-wide text-ink/40">Pending</span>
+          {% endif %}
+        </td>
+        <td class="px-5 py-4 text-right num font-semibold text-ink whitespace-nowrap">{{ quote.total | money }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+<!-- Mobile card list -->
+<div class="md:hidden bg-papercard border border-line rounded-lg divide-y divide-line overflow-hidden">
+  {% for quote in quotes %}
+  <a href="/quotes/{{ quote.id }}/edit" class="block px-4 py-3.5 hover:bg-white transition-colors">
+    <div class="flex items-start justify-between gap-3 mb-1">
+      <p class="font-medium text-ink">
+        {% if quote.contact %}<span class="text-brass">{{ quote.contact.display_name }}</span>{% else %}<span class="text-ink/30">—</span>{% endif %}
+      </p>
+      <p class="num font-semibold text-ink whitespace-nowrap shrink-0">{{ quote.total | money }}</p>
+    </div>
+    <div class="flex items-center justify-between gap-3 text-xs text-ink/50">
+      <p>{{ quote.date.strftime('%d %b %Y') }} · {{ quote.quote_number }}</p>
+      {% if quote.status == 'accepted' %}
+      <span class="text-xs uppercase tracking-wide text-brass bg-brasslight/30 px-2 py-0.5 rounded-full shrink-0">Accepted</span>
+      {% elif quote.is_expired %}
+      <span class="text-xs uppercase tracking-wide text-rust bg-rustlight/30 px-2 py-0.5 rounded-full shrink-0">Expired</span>
+      {% endif %}
+    </div>
+  </a>
+  {% endfor %}
+</div>
+{% else %}
+<div class="bg-papercard border border-dashed border-line rounded-lg px-4 py-16 text-center text-sm text-ink/40">
+  {% if (selected_range and selected_range != 'all') or customer_query or (selected_status and selected_status != 'all') %}No quotes match this filter.{% else %}No quotes created yet. {% if user.role in ['owner', 'bookkeeper'] %}<a href="/quotes/new" class="text-accent underline">Create your first quote →</a>{% endif %}{% endif %}
+</div>
+{% endif %}
+
+<script>
+  function toggleCustomRange() {
+    const select = document.getElementById('range-select');
+    document.getElementById('custom-range-fields').classList.toggle('hidden', select.value !== 'custom');
+  }
+</script>
+
+{% endblock %}

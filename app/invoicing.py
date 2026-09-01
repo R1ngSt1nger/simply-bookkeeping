@@ -13,3 +13,16 @@ def claim_invoice_number(db: Session) -> str:
     number = counter.next_number
     counter.next_number = number + 1
     return f"INV-{number:04d}"
+
+
+def claim_quote_number(db: Session) -> str:
+    """Same idea as claim_invoice_number, but for quotes — a separate counter
+    and prefix so the two sequences never collide or share numbering."""
+    counter = db.query(models.QuoteCounter).first()
+    if not counter:
+        counter = models.QuoteCounter(next_number=1)
+        db.add(counter)
+        db.flush()
+    number = counter.next_number
+    counter.next_number = number + 1
+    return f"QUO-{number:04d}"

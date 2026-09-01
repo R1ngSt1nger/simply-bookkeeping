@@ -16,7 +16,7 @@ from . import analytics
 from .settings_helper import sso_login_context, ensure_default_business
 from .migrations import run_migrations
 
-from .routers import income, expenses, categories, reports, attachments, profile, settings, sso, contacts, uploads, businesses, backup, password_reset
+from .routers import income, expenses, categories, reports, attachments, profile, settings, sso, contacts, uploads, businesses, backup, password_reset, quotes
 
 run_migrations()
 
@@ -154,6 +154,7 @@ def dashboard(request: Request, db: Session = Depends(get_db), control_db: Sessi
     })
 
 
+app.include_router(quotes.router)
 app.include_router(income.router)
 app.include_router(expenses.router)
 app.include_router(categories.router)

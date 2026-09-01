@@ -1,11 +1,10 @@
-import os
 from datetime import date, datetime
 from fastapi import APIRouter, Request, Depends, Form
 from fastapi.responses import RedirectResponse, HTMLResponse
 from sqlalchemy.orm import Session
 from typing import List
 
-from ..database import get_db
+from ..database import get_db, get_control_db
 from .. import models
 from ..auth import require_login, require_write
 from ..templates_config import render
@@ -76,12 +75,25 @@ def list_income(
 
 
 @router.get("/new", response_class=HTMLResponse)
-def new_income_form(request: Request, db: Session = Depends(get_db), user=Depends(require_write)):
+def new_income_form(request: Request, from_quote: int = None, db: Session = Depends(get_db), user=Depends(require_write)):
+    quote_prefill = None
+    selected_contact = None
+    if from_quote:
+        quote = db.query(models.Quote).filter(models.Quote.id == from_quote).first()
+        if quote:
+            quote_prefill = {
+                "quote_id": quote.id,
+                "reference": quote.quote_number,
+                "notes": quote.notes,
+                "line_items": [{"description": li.description, "amount": float(li.amount)} for li in quote.line_items],
+            }
+            selected_contact = quote.contact
     return render(request, "income_form.html", {
         "request": request, "user": user, "transaction": None, "today": date.today().isoformat(),
-        "contacts": _contacts_for_picker(db), "selected_contact": None,
+        "contacts": _contacts_for_picker(db), "selected_contact": selected_contact,
         "categories": _line_item_categories(db), "error": None,
         "payment_methods": _payment_method_names(db), "can_write": True,
+        "quote_prefill": quote_prefill, "audit_log": [],
     })
 
 
@@ -98,6 +110,7 @@ def create_income(
     payment_date: List[str] = Form([]),
     payment_amount: List[str] = Form([]),
     payment_method: List[str] = Form([]),
+    from_quote_id: str = Form(""),
     db: Session = Depends(get_db),
     user=Depends(require_write),
 ):
@@ -106,7 +119,7 @@ def create_income(
             "request": request, "user": user, "transaction": None, "today": tx_date or date.today().isoformat(),
             "contacts": _contacts_for_picker(db), "selected_contact": None,
             "categories": _line_item_categories(db), "error": "Please choose a customer.",
-            "payment_methods": _payment_method_names(db), "can_write": True,
+            "payment_methods": _payment_method_names(db), "can_write": True, "quote_prefill": None, "audit_log": [],
         }, status_code=400)
 
     tx = models.IncomeTransaction(
@@ -131,19 +144,42 @@ def create_income(
 
     _save_payments(db, tx, payment_date, payment_amount, payment_method)
 
+    creation_note = "Income record created"
+    quote = None
+    if from_quote_id:
+        quote = db.query(models.Quote).filter(models.Quote.id == int(from_quote_id)).first()
+        if quote:
+            quote.status = "accepted"
+            quote.accepted_income_transaction_id = tx.id
+            creation_note = f"Income record created from quote {quote.quote_number}"
+    db.add(models.AuditLogEntry(record_type="income", record_id=tx.id, event=creation_note))
+    if quote:
+        db.add(models.AuditLogEntry(record_type="quote", record_id=quote.id, event="Converted to income record"))
+
     db.commit()
     return RedirectResponse("/income", status_code=303)
 
 
 @router.get("/{tx_id}/edit", response_class=HTMLResponse)
-def edit_income_form(tx_id: int, request: Request, db: Session = Depends(get_db), user=Depends(require_login)):
+def edit_income_form(tx_id: int, request: Request, success: str = None, error: str = None, db: Session = Depends(get_db), user=Depends(require_login)):
     tx = db.query(models.IncomeTransaction).filter(models.IncomeTransaction.id == tx_id).first()
+    audit_log = db.query(models.AuditLogEntry).filter(
+        models.AuditLogEntry.record_type == "income", models.AuditLogEntry.record_id == tx_id
+    ).order_by(models.AuditLogEntry.created_at.desc()).all() if tx else []
+    success_map = {"invoice_emailed": "Invoice emailed to customer."}
+    error_map = {
+        "no_email": "This customer doesn't have an email address on file.",
+        "smtp_not_configured": "SMTP isn't configured yet — set it up in Settings first.",
+        "send_failed": "Something went wrong sending that email — please try again.",
+    }
     return render(request, "income_form.html", {
         "request": request, "user": user, "transaction": tx, "today": date.today().isoformat(),
         "contacts": _contacts_for_picker(db), "selected_contact": tx.contact if tx else None,
-        "categories": _line_item_categories(db), "error": None,
+        "categories": _line_item_categories(db), "error": error_map.get(error),
+        "success": success_map.get(success),
         "payment_methods": _payment_method_names(db),
         "can_write": user.role in ("owner", "bookkeeper"),
+        "quote_prefill": None, "audit_log": audit_log,
     })
 
 
@@ -174,6 +210,7 @@ def update_income(
             "contacts": _contacts_for_picker(db), "selected_contact": tx.contact if tx else None,
             "categories": _line_item_categories(db), "error": "Please choose a customer.",
             "payment_methods": _payment_method_names(db), "can_write": True,
+            "quote_prefill": None, "audit_log": [],
         }, status_code=400)
 
     tx.date = datetime.strptime(tx_date, "%Y-%m-%d").date()
@@ -220,240 +257,57 @@ def delete_income(tx_id: int, db: Session = Depends(get_db), user=Depends(requir
 
 @router.get("/{tx_id}/invoice.pdf")
 def invoice_pdf(tx_id: int, request: Request, db: Session = Depends(get_db), user=Depends(require_login)):
-    import io
-    from reportlab.lib.pagesizes import A4
-    from reportlab.lib.units import mm
-    from reportlab.lib import colors
-    from reportlab.pdfgen import canvas
-    from reportlab.pdfbase.pdfmetrics import stringWidth
     from fastapi.responses import StreamingResponse
+    import io
     from ..settings_helper import get_active_business, active_theme_key
-    from ..themes import get_theme
-    from ..files import business_logo_path
+    from ..pdf_generation import generate_invoice_pdf
 
     tx = db.query(models.IncomeTransaction).filter(models.IncomeTransaction.id == tx_id).first()
     if not tx:
         return RedirectResponse("/income", status_code=303)
 
     biz = get_active_business(request)
-    theme = get_theme(active_theme_key(request))
-
-    ink = colors.HexColor(theme["ink"])
-    rust = colors.HexColor("#D1493C")
-    green = colors.HexColor("#1E9E6B")
-    grey = colors.HexColor("#8A8D85")
-    line_col = colors.HexColor(theme["line"])
-
-    def wrap_text(text, font_name, font_size, max_width):
-        """Word-wrap plain text to fit within max_width, returning a list of lines."""
-        words = text.split()
-        if not words:
-            return [""]
-        lines = []
-        current = words[0]
-        for word in words[1:]:
-            candidate = f"{current} {word}"
-            if stringWidth(candidate, font_name, font_size) <= max_width:
-                current = candidate
-            else:
-                lines.append(current)
-                current = word
-        lines.append(current)
-        return lines
-
-    buf = io.BytesIO()
-    c = canvas.Canvas(buf, pagesize=A4)
-    width, height = A4
-    left = 20 * mm
-    right = width - 20 * mm
-
-    y = height - 20 * mm
-
-    # --- Header: logo (top-left), business details to its right, invoice meta top-right ---
-    logo_width = 22 * mm
-    logo_height = 16 * mm
-    logo_bottom = y
-    text_x = left
-
-    if biz.logo_filename:
-        logo_path = business_logo_path(biz.slug, biz.logo_filename)
-        if os.path.exists(logo_path):
-            try:
-                c.drawImage(logo_path, left, y - logo_height, width=logo_width, height=logo_height,
-                             preserveAspectRatio=True, mask="auto")
-                logo_bottom = y - logo_height
-                text_x = left + logo_width + 6 * mm  # push business details clear of the logo
-            except Exception:
-                pass
-
-    name_y = y
-    c.setFont("Helvetica-Bold", 14)
-    c.setFillColor(ink)
-    c.drawString(text_x, name_y, biz.name)
-    name_y -= 6 * mm
-
-    c.setFont("Helvetica", 9)
-    c.setFillColor(grey)
-    detail_lines = []
-    if biz.abn:
-        detail_lines.append(f"ABN {biz.abn}")
-    addr_bits = [biz.address_line, " ".join(filter(None, [biz.suburb, biz.state, biz.postcode]))]
-    addr_bits = [b for b in addr_bits if b]
-    detail_lines.extend(addr_bits)
-    contact_bits = [b for b in [biz.phone, biz.email] if b]
-    if contact_bits:
-        detail_lines.append(" · ".join(contact_bits))
-    for line in detail_lines:
-        c.drawString(text_x, name_y, line)
-        name_y -= 4.5 * mm
-
-    # Invoice meta, top right
-    meta_y = y
-    c.setFont("Helvetica-Bold", 18)
-    c.setFillColor(ink)
-    c.drawRightString(right, meta_y, "INVOICE")
-    meta_y -= 8 * mm
-    c.setFont("Helvetica", 9.5)
-    c.setFillColor(ink)
-    c.drawRightString(right, meta_y, f"Invoice #: {tx.invoice_number or '—'}")
-    meta_y -= 5 * mm
-    c.drawRightString(right, meta_y, f"Issue date: {tx.date.strftime('%d %b %Y')}")
-    meta_y -= 5 * mm
-    if tx.invoice_due_date:
-        c.drawRightString(right, meta_y, f"Due date: {tx.invoice_due_date.strftime('%d %b %Y')}")
-        meta_y -= 5 * mm
-
-    y = min(name_y, logo_bottom, meta_y) - 8 * mm
-
-    # --- Bill To ---
-    c.setStrokeColor(line_col)
-    c.line(left, y, right, y)
-    y -= 8 * mm
-
-    c.setFont("Helvetica-Bold", 9)
-    c.setFillColor(grey)
-    c.drawString(left, y, "BILL TO")
-    y -= 5.5 * mm
-    c.setFont("Helvetica-Bold", 11)
-    c.setFillColor(ink)
-    if tx.contact:
-        c.drawString(left, y, tx.contact.display_name)
-        y -= 5.5 * mm
-        c.setFont("Helvetica", 9.5)
-        if tx.contact.email:
-            c.drawString(left, y, tx.contact.email)
-            y -= 4.5 * mm
-        if tx.contact.phone:
-            c.drawString(left, y, tx.contact.phone)
-            y -= 4.5 * mm
-    if tx.reference:
-        c.setFont("Helvetica", 9)
-        c.setFillColor(grey)
-        c.drawString(left, y, f"Reference: {tx.reference}")
-        y -= 4.5 * mm
-
-    y -= 6 * mm
-
-    # --- Line items table ---
-    amount_col_width = 28 * mm
-    desc_max_width = (right - amount_col_width) - left
-
-    c.setFont("Helvetica-Bold", 9)
-    c.setFillColor(grey)
-    c.drawString(left, y, "DESCRIPTION")
-    c.drawRightString(right, y, "AMOUNT")
-    y -= 3 * mm
-    c.setStrokeColor(line_col)
-    c.line(left, y, right, y)
-    y -= 6 * mm
-
-    c.setFont("Helvetica", 10)
-    c.setFillColor(ink)
-    row_shade = colors.HexColor("#F3F2EE")
-    for i, li in enumerate(tx.line_items):
-        desc_lines = wrap_text(li.description, "Helvetica", 10, desc_max_width)
-        row_height = (4.5 * mm) * (len(desc_lines) - 1) + 6 * mm
-
-        if i % 2 == 1:
-            c.setFillColor(row_shade)
-            c.rect(left - 3 * mm, y - row_height + 4.5 * mm, (right - left) + 6 * mm, row_height, fill=1, stroke=0)
-            c.setFillColor(ink)
-
-        amt = float(li.amount)
-        c.drawString(left, y, desc_lines[0])
-        c.drawRightString(right, y, f"{'-' if amt < 0 else ''}${abs(amt):,.2f}")
-        for extra_line in desc_lines[1:]:
-            y -= 4.5 * mm
-            c.drawString(left, y, extra_line)
-        y -= 6 * mm
-
-    c.setStrokeColor(line_col)
-    c.line(left, y, right, y)
-    y -= 7 * mm
-
-    c.setFont("Helvetica-Bold", 11)
-    c.setFillColor(ink)
-    c.drawString(left, y, "Total")
-    c.drawRightString(right, y, f"${float(tx.total):,.2f}")
-    y -= 10 * mm
-
-    # --- Payment history ---
-    if tx.payments:
-        c.setFont("Helvetica-Bold", 9)
-        c.setFillColor(grey)
-        c.drawString(left, y, "PAYMENTS RECEIVED")
-        y -= 5.5 * mm
-        c.setFont("Helvetica", 9.5)
-        c.setFillColor(ink)
-        for p in tx.payments:
-            method_label = p.method
-            c.drawString(left, y, f"{p.date.strftime('%d %b %Y')} — {method_label}")
-            c.drawRightString(right, y, f"${float(p.amount):,.2f}")
-            y -= 5 * mm
-        y -= 4 * mm
-
-    balance = float(tx.balance_due)
-    c.setStrokeColor(ink)
-    c.setLineWidth(1.2)
-    c.line(left, y, right, y)
-    y -= 8 * mm
-    c.setFont("Helvetica-Bold", 13)
-    if balance <= 0:
-        c.setFillColor(green)
-        c.drawString(left, y, "PAID IN FULL")
-        c.drawRightString(right, y, "$0.00")
-    else:
-        c.setFillColor(rust)
-        c.drawString(left, y, "Balance due")
-        c.drawRightString(right, y, f"${balance:,.2f}")
-    y -= 14 * mm
-
-    # --- Payment details ---
-    payment_bits = [b for b in [
-        ("BSB:", biz.payment_bsb) if biz.payment_bsb else None,
-        ("Account:", biz.payment_account_number) if biz.payment_account_number else None,
-        ("Name:", biz.payment_account_name) if biz.payment_account_name else None,
-        ("PayID:", biz.payment_payid) if biz.payment_payid else None,
-    ] if b]
-    if payment_bits:
-        c.setFont("Helvetica-Bold", 9)
-        c.setFillColor(grey)
-        c.drawString(left, y, "PAYMENT DETAILS")
-        y -= 5.5 * mm
-        c.setFillColor(ink)
-        for label, value in payment_bits:
-            c.setFont("Helvetica-Bold", 9.5)
-            c.drawString(left, y, label)
-            label_width = stringWidth(label, "Helvetica-Bold", 9.5)
-            c.setFont("Helvetica", 9.5)
-            c.drawString(left + label_width + 1.5 * mm, y, value)
-            y -= 4.5 * mm
-
-    c.showPage()
-    c.save()
-    buf.seek(0)
+    pdf_bytes = generate_invoice_pdf(tx, biz, active_theme_key(request))
 
     filename = f"{tx.invoice_number or 'invoice'}.pdf"
-    return StreamingResponse(buf, media_type="application/pdf", headers={
+    return StreamingResponse(io.BytesIO(pdf_bytes), media_type="application/pdf", headers={
         "Content-Disposition": f"inline; filename={filename}"
     })
+
+
+@router.post("/{tx_id}/email-invoice")
+def email_invoice(tx_id: int, request: Request, db: Session = Depends(get_db), control_db: Session = Depends(get_control_db), user=Depends(require_write)):
+    from ..settings_helper import get_active_business, active_theme_key
+    from ..pdf_generation import generate_invoice_pdf
+    from ..email_sender import send_email, is_smtp_configured
+    from ..settings_helper import get_app_settings
+
+    tx = db.query(models.IncomeTransaction).filter(models.IncomeTransaction.id == tx_id).first()
+    if not tx or not tx.contact or not tx.contact.email:
+        return RedirectResponse(f"/income/{tx_id}/edit?error=no_email", status_code=303)
+
+    settings = get_app_settings(control_db)
+    if not is_smtp_configured(settings):
+        return RedirectResponse(f"/income/{tx_id}/edit?error=smtp_not_configured", status_code=303)
+
+    biz = get_active_business(request)
+    pdf_bytes = generate_invoice_pdf(tx, biz, active_theme_key(request))
+    filename = f"{tx.invoice_number or 'invoice'}.pdf"
+
+    html_body = f"""
+    <div style="font-family:sans-serif;color:#173B3D;max-width:480px;margin:0 auto;">
+      <img src="__LOGO_CID__" style="height:40px;margin-bottom:16px;" />
+      <p>Hi {tx.contact.display_name},</p>
+      <p>Please find attached invoice {tx.invoice_number or ''} from {biz.name}.</p>
+      <p>Total: ${float(tx.total):,.2f}{' — balance due: $' + format(float(tx.balance_due), ',.2f') if tx.balance_due > 0 else ' — paid in full'}</p>
+      <p>Thanks,<br/>{biz.name}</p>
+    </div>
+    """
+    try:
+        send_email(settings, tx.contact.email, f"Invoice {tx.invoice_number or ''} from {biz.name}".strip(), html_body, attachments=[(filename, pdf_bytes)])
+    except Exception:
+        return RedirectResponse(f"/income/{tx_id}/edit?error=send_failed", status_code=303)
+
+    db.add(models.AuditLogEntry(record_type="income", record_id=tx.id, event=f"Invoice emailed to {tx.contact.email}"))
+    db.commit()
+    return RedirectResponse(f"/income/{tx_id}/edit?success=invoice_emailed", status_code=303)

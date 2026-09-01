@@ -205,3 +205,68 @@ class PaymentMethod(Base):
 
     id = Column(Integer, primary_key=True)
     name = Column(String, nullable=False)
+
+
+class Quote(Base):
+    """A quote for a prospective sale. Not a financial record itself — it only
+    becomes one once converted to an Income record."""
+    __tablename__ = "quotes"
+
+    id = Column(Integer, primary_key=True)
+    date = Column(Date, nullable=False)
+    quote_number = Column(String, nullable=False)  # claimed once, on creation — e.g. QUO-0001
+    expiry_date = Column(Date, nullable=True)
+    contact_id = Column(Integer, ForeignKey("contacts.id"), nullable=True)
+    notes = Column(Text, nullable=True)
+    status = Column(String, nullable=False, default="pending")  # "pending" or "accepted"
+    accepted_income_transaction_id = Column(Integer, ForeignKey("income_transactions.id"), nullable=True)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+
+    line_items = relationship(
+        "QuoteLineItem", back_populates="quote",
+        cascade="all, delete-orphan", order_by="QuoteLineItem.id"
+    )
+    contact = relationship("Contact")
+
+    @property
+    def total(self):
+        return sum((li.amount for li in self.line_items), start=0)
+
+    @property
+    def is_expired(self):
+        from datetime import date as _date
+        return self.status == "pending" and bool(self.expiry_date) and self.expiry_date < _date.today()
+
+
+class QuoteLineItem(Base):
+    __tablename__ = "quote_line_items"
+
+    id = Column(Integer, primary_key=True)
+    quote_id = Column(Integer, ForeignKey("quotes.id"), nullable=False)
+    description = Column(String, nullable=False)
+    amount = Column(Numeric(12, 2), nullable=False)
+
+    quote = relationship("Quote", back_populates="line_items")
+
+
+class QuoteCounter(Base):
+    """Singleton row (id=1) — a strictly-increasing counter for this business's
+    quote numbers, mirroring InvoiceCounter."""
+    __tablename__ = "quote_counter"
+
+    id = Column(Integer, primary_key=True)
+    next_number = Column(Integer, nullable=False, default=1)
+
+
+class AuditLogEntry(Base):
+    """A lightweight internal-only trail of notable events on a record — e.g.
+    "Quote created", "Emailed to customer", "Converted to income record #12".
+    Shared across record types via record_type + record_id rather than a
+    separate table per type. Never shown to the customer, only to logged-in users."""
+    __tablename__ = "audit_log_entries"
+
+    id = Column(Integer, primary_key=True)
+    record_type = Column(String, nullable=False)  # "quote" or "income"
+    record_id = Column(Integer, nullable=False)
+    event = Column(String, nullable=False)  # short human-readable description
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
