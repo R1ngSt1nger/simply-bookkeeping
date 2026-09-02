@@ -6,6 +6,7 @@ from fastapi.responses import RedirectResponse, HTMLResponse
 from fastapi.staticfiles import StaticFiles
 from starlette.middleware.sessions import SessionMiddleware
 from sqlalchemy.orm import Session
+from sqlalchemy import func
 
 from .database import get_db, get_control_db, ControlSessionLocal, get_or_create_secret_key, DEFAULT_BUSINESS_SLUG
 from . import models
@@ -99,7 +100,7 @@ def login_form(request: Request, db: Session = Depends(get_control_db)):
 
 @app.post("/login", response_class=HTMLResponse)
 def login_submit(request: Request, username: str = Form(...), password: str = Form(...), db: Session = Depends(get_control_db)):
-    user = db.query(control_models.User).filter(control_models.User.username == username).first()
+    user = db.query(control_models.User).filter(func.lower(control_models.User.username) == username.strip().lower()).first()
     if not user or not verify_password(password, user.password_hash):
         return render(request, "login.html", sso_login_context(db, error="Those details don't match any account."), status_code=401)
     request.session["user_id"] = user.id

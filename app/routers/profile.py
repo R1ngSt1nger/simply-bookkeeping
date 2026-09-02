@@ -2,6 +2,7 @@ from typing import List
 from fastapi import APIRouter, Request, Depends, Form
 from fastapi.responses import RedirectResponse, HTMLResponse
 from sqlalchemy.orm import Session
+from sqlalchemy import func
 
 from ..database import get_control_db
 from .. import control_models
@@ -90,7 +91,7 @@ def add_user(
         role = "accountant"
     if not username or not password:
         return RedirectResponse("/settings?error=login_missing_fields&opened=logins", status_code=303)
-    if db.query(control_models.User).filter(control_models.User.username == username).first():
+    if db.query(control_models.User).filter(func.lower(control_models.User.username) == username.lower()).first():
         return RedirectResponse("/settings?error=login_username_taken&opened=logins", status_code=303)
 
     new_user = control_models.User(

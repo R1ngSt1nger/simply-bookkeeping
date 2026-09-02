@@ -1,7 +1,7 @@
 import secrets
 from fastapi import APIRouter, Request, Depends
 from fastapi.responses import RedirectResponse
-from sqlalchemy import or_
+from sqlalchemy import or_, func
 from sqlalchemy.orm import Session
 
 from ..database import get_control_db
@@ -54,7 +54,7 @@ async def sso_callback(request: Request, db: Session = Depends(get_control_db)):
             db, error="Your identity provider didn't return a username or email to match against."
         ), status_code=400)
 
-    conditions = [control_models.User.username == identifier, control_models.User.email == identifier]
+    conditions = [func.lower(control_models.User.username) == identifier.lower(), control_models.User.email == identifier]
     if email:
         conditions.append(control_models.User.email == email)
     user = db.query(control_models.User).filter(or_(*conditions)).first()
@@ -63,7 +63,7 @@ async def sso_callback(request: Request, db: Session = Depends(get_control_db)):
         base_username = identifier.split("@")[0]
         username = base_username
         suffix = 1
-        while db.query(control_models.User).filter(control_models.User.username == username).first():
+        while db.query(control_models.User).filter(func.lower(control_models.User.username) == username.lower()).first():
             suffix += 1
             username = f"{base_username}{suffix}"
         user = control_models.User(

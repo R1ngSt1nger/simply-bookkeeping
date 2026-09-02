@@ -28,6 +28,26 @@ def _wrap_text(text, font_name, font_size, max_width):
     return lines
 
 
+def _draw_right_label_value(c, right_x, y, label, value, font_size):
+    """Draws 'label value' ending exactly at right_x, with only the label in
+    bold — used for the header meta lines like 'Invoice #: INV-0001'."""
+    c.setFont("Helvetica", font_size)
+    c.drawRightString(right_x, y, value)
+    value_width = stringWidth(value, "Helvetica", font_size)
+    c.setFont("Helvetica-Bold", font_size)
+    c.drawRightString(right_x - value_width, y, label)
+
+
+def _draw_left_label_value(c, left_x, y, label, value, font_size):
+    """Draws 'label value' starting at left_x, with only the label in bold —
+    used for lines like 'Reference: QUO-0005'."""
+    c.setFont("Helvetica-Bold", font_size)
+    c.drawString(left_x, y, label)
+    label_width = stringWidth(label, "Helvetica-Bold", font_size)
+    c.setFont("Helvetica", font_size)
+    c.drawString(left_x + label_width, y, value)
+
+
 def _draw_header(c, biz, theme_key, left, right, y, heading_text):
     """Logo (top-left), business details to its right, document heading top-right.
     Returns the y position to continue drawing from below the header."""
@@ -97,14 +117,13 @@ def generate_invoice_pdf(tx, biz, theme_key) -> bytes:
     y = height - 20 * mm
 
     name_y, logo_bottom, meta_y = _draw_header(c, biz, theme_key, left, right, y, "INVOICE")
-    c.setFont("Helvetica", 9.5)
     c.setFillColor(ink)
-    c.drawRightString(right, meta_y, f"Invoice #: {tx.invoice_number or '—'}")
+    _draw_right_label_value(c, right, meta_y, "Invoice #: ", f"{tx.invoice_number or '—'}", 9.5)
     meta_y -= 5 * mm
-    c.drawRightString(right, meta_y, f"Issue date: {tx.date.strftime('%d %b %Y')}")
+    _draw_right_label_value(c, right, meta_y, "Issue date: ", tx.date.strftime('%d %b %Y'), 9.5)
     meta_y -= 5 * mm
     if tx.invoice_due_date:
-        c.drawRightString(right, meta_y, f"Due date: {tx.invoice_due_date.strftime('%d %b %Y')}")
+        _draw_right_label_value(c, right, meta_y, "Due date: ", tx.invoice_due_date.strftime('%d %b %Y'), 9.5)
         meta_y -= 5 * mm
 
     y = min(name_y, logo_bottom, meta_y) - 8 * mm
@@ -130,9 +149,8 @@ def generate_invoice_pdf(tx, biz, theme_key) -> bytes:
             c.drawString(left, y, tx.contact.phone)
             y -= 4.5 * mm
     if tx.reference:
-        c.setFont("Helvetica", 9)
         c.setFillColor(grey)
-        c.drawString(left, y, f"Reference: {tx.reference}")
+        _draw_left_label_value(c, left, y, "Reference: ", tx.reference, 9)
         y -= 4.5 * mm
 
     y -= 6 * mm
@@ -198,10 +216,14 @@ def generate_invoice_pdf(tx, biz, theme_key) -> bytes:
     c.line(left, y, right, y)
     y -= 8 * mm
     c.setFont("Helvetica-Bold", 13)
-    if balance <= 0:
+    if balance == 0:
         c.setFillColor(green)
         c.drawString(left, y, "PAID IN FULL")
         c.drawRightString(right, y, "$0.00")
+    elif balance < 0:
+        c.setFillColor(green)
+        c.drawString(left, y, "This account is in credit")
+        c.drawRightString(right, y, f"${abs(balance):,.2f}")
     else:
         c.setFillColor(rust)
         c.drawString(left, y, "Balance due")
@@ -248,14 +270,13 @@ def generate_quote_pdf(quote, biz, theme_key) -> bytes:
     y = height - 20 * mm
 
     name_y, logo_bottom, meta_y = _draw_header(c, biz, theme_key, left, right, y, "QUOTE")
-    c.setFont("Helvetica", 9.5)
     c.setFillColor(ink)
-    c.drawRightString(right, meta_y, f"Quote #: {quote.quote_number}")
+    _draw_right_label_value(c, right, meta_y, "Quote #: ", quote.quote_number, 9.5)
     meta_y -= 5 * mm
-    c.drawRightString(right, meta_y, f"Issue date: {quote.date.strftime('%d %b %Y')}")
+    _draw_right_label_value(c, right, meta_y, "Issue date: ", quote.date.strftime('%d %b %Y'), 9.5)
     meta_y -= 5 * mm
     if quote.expiry_date:
-        c.drawRightString(right, meta_y, f"Valid until: {quote.expiry_date.strftime('%d %b %Y')}")
+        _draw_right_label_value(c, right, meta_y, "Valid until: ", quote.expiry_date.strftime('%d %b %Y'), 9.5)
         meta_y -= 5 * mm
 
     y = min(name_y, logo_bottom, meta_y) - 8 * mm

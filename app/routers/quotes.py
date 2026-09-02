@@ -19,6 +19,17 @@ def _contacts_for_picker(db: Session):
     return [{"id": c.id, "name": c.display_name, "type": c.contact_type} for c in contacts]
 
 
+def _auto_expire_if_due(quote, db: Session):
+    """If a quote is still Pending and its expiry date has passed, transition
+    it to Expired — this is a real stored status (not just a display
+    computation), so it can also be manually overridden afterward without
+    being silently flipped back by this same check."""
+    if quote.status == "pending" and quote.expiry_date and quote.expiry_date < date.today():
+        quote.status = "expired"
+        db.add(models.AuditLogEntry(record_type="quote", record_id=quote.id, event="Automatically marked Expired (past expiry date)"))
+        db.commit()
+
+
 @router.get("", response_class=HTMLResponse)
 def list_quotes(
     request: Request,
@@ -39,12 +50,16 @@ def list_quotes(
         q = q.join(models.Contact, models.Quote.contact_id == models.Contact.id).filter(
             models.Contact.display_name.ilike(f"%{customer.strip()}%")
         )
-    if status == "accepted":
-        q = q.filter(models.Quote.status == "accepted")
-    elif status == "pending":
-        q = q.filter(models.Quote.status == "pending")
 
-    quotes = q.order_by(models.Quote.date.desc()).all()
+    all_quotes = q.order_by(models.Quote.date.desc()).all()
+    for quote in all_quotes:
+        _auto_expire_if_due(quote, db)
+
+    if status in ("pending", "accepted", "expired", "rejected"):
+        quotes = [quote for quote in all_quotes if quote.status == status]
+    else:
+        quotes = all_quotes
+
     return render(request, "quotes_list.html", {
         "request": request, "user": user, "quotes": quotes,
         "selected_range": range, "range_labels": RANGE_LABELS,
@@ -59,7 +74,7 @@ def new_quote_form(request: Request, db: Session = Depends(get_db), user=Depends
         "request": request, "user": user, "quote": None, "today": date.today().isoformat(),
         "expiry_default": (date.today() + timedelta(days=14)).isoformat(),
         "contacts": _contacts_for_picker(db), "selected_contact": None,
-        "error": None, "success": None, "can_write": True, "audit_log": [], "smtp_configured": False,
+        "error": None, "success": None, "can_write": True, "can_change_status": False, "audit_log": [], "smtp_configured": False,
     })
 
 
@@ -79,7 +94,7 @@ def create_quote(
         return render(request, "quote_form.html", {
             "request": request, "user": user, "quote": None, "today": q_date or date.today().isoformat(),
             "expiry_default": expiry_date, "contacts": _contacts_for_picker(db), "selected_contact": None,
-            "error": "Please choose a customer.", "success": None, "can_write": True, "audit_log": [], "smtp_configured": False,
+            "error": "Please choose a customer.", "success": None, "can_write": True, "can_change_status": False, "audit_log": [], "smtp_configured": False,
         }, status_code=400)
 
     quote = models.Quote(
@@ -107,6 +122,7 @@ def edit_quote_form(quote_id: int, request: Request, db: Session = Depends(get_d
     quote = db.query(models.Quote).filter(models.Quote.id == quote_id).first()
     if not quote:
         return RedirectResponse("/quotes", status_code=303)
+    _auto_expire_if_due(quote, db)
     audit_log = db.query(models.AuditLogEntry).filter(
         models.AuditLogEntry.record_type == "quote", models.AuditLogEntry.record_id == quote_id
     ).order_by(models.AuditLogEntry.created_at.desc()).all()
@@ -117,10 +133,25 @@ def edit_quote_form(quote_id: int, request: Request, db: Session = Depends(get_d
         "expiry_default": quote.expiry_date.isoformat() if quote.expiry_date else "",
         "contacts": _contacts_for_picker(db), "selected_contact": quote.contact,
         "error": None,
-        "can_write": user.role in ("owner", "bookkeeper") and quote.status != "accepted",
+        "can_write": user.role in ("owner", "bookkeeper") and quote.status == "pending",
+        "can_change_status": user.role in ("owner", "bookkeeper"),
         "audit_log": audit_log,
         "smtp_configured": is_smtp_configured(get_app_settings(control_db)),
     })
+
+
+@router.post("/{quote_id}/status")
+def update_quote_status(quote_id: int, status: str = Form(...), db: Session = Depends(get_db), user=Depends(require_write)):
+    quote = db.query(models.Quote).filter(models.Quote.id == quote_id).first()
+    if quote and status in ("pending", "accepted", "expired", "rejected") and status != quote.status:
+        old_status = quote.status
+        quote.status = status
+        db.add(models.AuditLogEntry(
+            record_type="quote", record_id=quote.id,
+            event=f"Status manually changed from {old_status.capitalize()} to {status.capitalize()}",
+        ))
+        db.commit()
+    return RedirectResponse(f"/quotes/{quote_id}/edit", status_code=303)
 
 
 @router.post("/{quote_id}/edit")
@@ -139,14 +170,15 @@ def update_quote(
     quote = db.query(models.Quote).filter(models.Quote.id == quote_id).first()
     if not quote:
         return RedirectResponse("/quotes", status_code=303)
-    if quote.status == "accepted":
+    if quote.status != "pending":
         return RedirectResponse(f"/quotes/{quote_id}/edit", status_code=303)
 
     if not contact_id:
         return render(request, "quote_form.html", {
             "request": request, "user": user, "quote": quote, "today": date.today().isoformat(),
             "expiry_default": expiry_date, "contacts": _contacts_for_picker(db), "selected_contact": quote.contact,
-            "error": "Please choose a customer.", "success": None, "can_write": True, "audit_log": [], "smtp_configured": False,
+            "error": "Please choose a customer.", "success": None, "can_write": True,
+            "can_change_status": True, "audit_log": [], "smtp_configured": False,
         }, status_code=400)
 
     quote.date = datetime.strptime(q_date, "%Y-%m-%d").date()

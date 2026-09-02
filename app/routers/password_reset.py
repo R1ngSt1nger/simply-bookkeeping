@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Request, Depends, Form
 from fastapi.responses import HTMLResponse, RedirectResponse
 from sqlalchemy.orm import Session
+from sqlalchemy import func
 
 from ..database import get_control_db
 from .. import control_models
@@ -28,7 +29,7 @@ def forgot_password_submit(request: Request, username: str = Form(...), db: Sess
     if not is_smtp_configured(settings):
         return RedirectResponse("/login?error=smtp_not_configured", status_code=303)
 
-    user = db.query(control_models.User).filter(control_models.User.username == username.strip()).first()
+    user = db.query(control_models.User).filter(func.lower(control_models.User.username) == username.strip().lower()).first()
 
     if user and user.email:
         token = create_reset_token(db, user)

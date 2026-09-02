@@ -21,13 +21,13 @@ _SKIP_LINE_KEYWORDS = (
 _AMOUNT_RE = re.compile(r"\$?\s*(\d{1,3}(?:,\d{3})*(?:\.\d{2}))\s*$")
 
 _INVOICE_NUMBER_RE = re.compile(
-    r"invoice\s*(?:number|no\.?|#)\s*[:\-]?\s*([A-Za-z0-9][A-Za-z0-9\-\/]{2,20})",
+    r"invoice\s*(?:number|no\.?|#)\s*[:\-]?\s*([A-Za-z0-9][A-Za-z0-9\-\/]{1,20})",
     re.IGNORECASE,
 )
 # Fallback for "Invoice: ABC123" with no "Number"/"No"/"#" keyword — the colon
 # must come right after "invoice" so this doesn't fire on a "TAX INVOICE" header.
 _INVOICE_NUMBER_FALLBACK_RE = re.compile(
-    r"invoice\s*:\s*([A-Za-z0-9][A-Za-z0-9\-\/]{2,20})",
+    r"invoice\s*:\s*([A-Za-z0-9][A-Za-z0-9\-\/]{1,20})",
     re.IGNORECASE,
 )
 
@@ -168,6 +168,66 @@ def _parse_line_items(text: str):
     return items
 
 
+_TOTAL_LINE_RE = re.compile(
+    r'^\s*(?:invoice\s+)?total\b[^0-9]*(\d{1,3}(?:,\d{3})*\.\d{2})',
+    re.IGNORECASE,
+)
+_DESCRIPTION_HEADER_RE = re.compile(r'^\s*description\s*$', re.IGNORECASE)
+
+
+def _parse_single_line_item_fallback(text: str):
+    """When the normal per-line scan finds nothing, some invoices (especially
+    decorative/non-standard templates) have their amount visually drift away
+    from the description during OCR, landing on the grand-total line instead
+    of staying attached to the description. This handles the common single
+    line item case: if there's a DESCRIPTION header and a recognisable total
+    below it, treat everything in between as one combined description, using
+    the total as its amount. Doesn't attempt to split multiple line items —
+    there's no reliable way to know how a drifted total should be divided."""
+    lines = [l.strip() for l in text.splitlines()]
+
+    desc_start = None
+    for i, line in enumerate(lines):
+        if _DESCRIPTION_HEADER_RE.match(line):
+            desc_start = i + 1
+            break
+    if desc_start is None:
+        return []
+
+    total_idx = None
+    total_amount = None
+    for i in range(desc_start, len(lines)):
+        m = _TOTAL_LINE_RE.match(lines[i])
+        if m:
+            total_idx = i
+            try:
+                total_amount = float(m.group(1).replace(",", ""))
+            except ValueError:
+                return []
+            break
+    if total_idx is None:
+        return []
+
+    desc_lines = []
+    for line in lines[desc_start:total_idx]:
+        if not line:
+            continue
+        if set(line) <= set("-=_ "):
+            continue
+        if any(kw in line.lower() for kw in _SKIP_LINE_KEYWORDS):
+            continue
+        desc_lines.append(line)
+
+    if not desc_lines:
+        return []
+
+    description = _clean_description(" ".join(desc_lines))
+    if not description:
+        return []
+
+    return [{"description": description, "amount": total_amount}]
+
+
 def _match_supplier(text: str, suppliers: list):
     """suppliers: list of (id, display_name) for this business's supplier contacts.
     Returns the id of the best match found in the OCR'd text, or None."""
@@ -184,11 +244,14 @@ def _match_supplier(text: str, suppliers: list):
 def parse_invoice_text(text: str, suppliers: list):
     """suppliers: list of (id, display_name) tuples for this business's existing
     supplier contacts, used only for matching — never for creating a new one."""
+    line_items = _parse_line_items(text)
+    if not line_items:
+        line_items = _parse_single_line_item_fallback(text)
     return {
         "date": _parse_date(text),
         "invoice_number": _parse_invoice_number(text),
         "supplier_contact_id": _match_supplier(text, suppliers),
-        "line_items": _parse_line_items(text),
+        "line_items": line_items,
     }
 
 

@@ -9,7 +9,7 @@
 <p class="text-sm text-ink/50 mb-5">Drop receipts or invoices here, then assign each one to a new expense record when you're ready. Files disappear from this list once assigned.</p>
 
 {% if user.role in ['owner', 'bookkeeper'] %}
-<form id="upload-form" method="post" action="/uploads" enctype="multipart/form-data">
+<form id="upload-form" method="post" action="/uploads" enctype="multipart/form-data" onsubmit="openEmailStatusModal('sending', 'Uploading file and processing OCR', 'Please wait…')">
   <div id="dropzone" class="border-2 border-dashed border-line rounded-lg px-6 py-12 text-center bg-papercard hover:bg-white transition-colors cursor-pointer mb-8">
     <p class="text-sm text-ink/60 mb-1">Drag files here, or <span class="text-accent underline">click to browse</span></p>
     <p class="text-xs text-ink/30">PDF, JPG, or PNG</p>
@@ -56,7 +56,7 @@
   dropzone.addEventListener('click', () => fileInput.click());
 
   fileInput.addEventListener('change', () => {
-    if (fileInput.files.length > 0) uploadForm.submit();
+    if (fileInput.files.length > 0) uploadForm.requestSubmit();
   });
 
   ['dragenter', 'dragover'].forEach(evt => {
@@ -77,7 +77,7 @@
     const dt = e.dataTransfer;
     if (dt && dt.files.length > 0) {
       fileInput.files = dt.files;
-      uploadForm.submit();
+      uploadForm.requestSubmit();
     }
   });
 </script>

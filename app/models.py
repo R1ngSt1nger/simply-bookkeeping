@@ -218,7 +218,7 @@ class Quote(Base):
     expiry_date = Column(Date, nullable=True)
     contact_id = Column(Integer, ForeignKey("contacts.id"), nullable=True)
     notes = Column(Text, nullable=True)
-    status = Column(String, nullable=False, default="pending")  # "pending" or "accepted"
+    status = Column(String, nullable=False, default="pending")  # "pending", "accepted", "expired", or "rejected"
     accepted_income_transaction_id = Column(Integer, ForeignKey("income_transactions.id"), nullable=True)
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
@@ -231,11 +231,6 @@ class Quote(Base):
     @property
     def total(self):
         return sum((li.amount for li in self.line_items), start=0)
-
-    @property
-    def is_expired(self):
-        from datetime import date as _date
-        return self.status == "pending" and bool(self.expiry_date) and self.expiry_date < _date.today()
 
 
 class QuoteLineItem(Base):

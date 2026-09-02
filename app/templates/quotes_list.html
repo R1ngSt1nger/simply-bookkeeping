@@ -39,6 +39,8 @@
       <option value="all" {% if selected_status == 'all' %}selected{% endif %}>All</option>
       <option value="pending" {% if selected_status == 'pending' %}selected{% endif %}>Pending</option>
       <option value="accepted" {% if selected_status == 'accepted' %}selected{% endif %}>Accepted</option>
+      <option value="expired" {% if selected_status == 'expired' %}selected{% endif %}>Expired</option>
+      <option value="rejected" {% if selected_status == 'rejected' %}selected{% endif %}>Rejected</option>
     </select>
   </div>
   <button type="submit" class="border border-accent text-accent text-sm font-medium px-4 py-2 rounded hover:bg-accentlight/30">Apply</button>
@@ -71,10 +73,12 @@
         <td class="px-5 py-4">
           {% if quote.status == 'accepted' %}
           <span class="text-xs uppercase tracking-wide text-brass bg-brasslight/30 px-2 py-0.5 rounded-full">Accepted</span>
-          {% elif quote.is_expired %}
-          <span class="text-xs uppercase tracking-wide text-rust bg-rustlight/30 px-2 py-0.5 rounded-full">Expired</span>
+          {% elif quote.status == 'rejected' %}
+          <span class="text-xs uppercase tracking-wide text-rust bg-rustlight/30 px-2 py-0.5 rounded-full">Rejected</span>
+          {% elif quote.status == 'expired' %}
+          <span class="text-xs uppercase tracking-wide text-expiredpurple bg-expiredpurplelight/50 px-2 py-0.5 rounded-full">Expired</span>
           {% else %}
-          <span class="text-xs uppercase tracking-wide text-ink/40">Pending</span>
+          <span class="text-xs uppercase tracking-wide text-ink/40 bg-ink/10 px-2 py-0.5 rounded-full">Pending</span>
           {% endif %}
         </td>
         <td class="px-5 py-4 text-right num font-semibold text-ink whitespace-nowrap">{{ quote.total | money }}</td>
@@ -98,8 +102,12 @@
       <p>{{ quote.date.strftime('%d %b %Y') }} · {{ quote.quote_number }}</p>
       {% if quote.status == 'accepted' %}
       <span class="text-xs uppercase tracking-wide text-brass bg-brasslight/30 px-2 py-0.5 rounded-full shrink-0">Accepted</span>
-      {% elif quote.is_expired %}
-      <span class="text-xs uppercase tracking-wide text-rust bg-rustlight/30 px-2 py-0.5 rounded-full shrink-0">Expired</span>
+      {% elif quote.status == 'rejected' %}
+      <span class="text-xs uppercase tracking-wide text-rust bg-rustlight/30 px-2 py-0.5 rounded-full shrink-0">Rejected</span>
+      {% elif quote.status == 'expired' %}
+      <span class="text-xs uppercase tracking-wide text-expiredpurple bg-expiredpurplelight/50 px-2 py-0.5 rounded-full shrink-0">Expired</span>
+      {% else %}
+      <span class="text-xs uppercase tracking-wide text-ink/40 bg-ink/10 px-2 py-0.5 rounded-full shrink-0">Pending</span>
       {% endif %}
     </div>
   </a>

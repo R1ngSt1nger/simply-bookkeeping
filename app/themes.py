@@ -46,6 +46,10 @@ MONEY_POSITIVE_LIGHT = "#CDEEDC"
 MONEY_NEGATIVE = "#D1493C"
 MONEY_NEGATIVE_LIGHT = "#F6D9D2"
 
+# Also fixed — used for the "Expired" quote status badge specifically.
+STATUS_EXPIRED = "#8B5FBF"
+STATUS_EXPIRED_LIGHT = "#E7DCF5"
+
 
 def get_theme(key: str) -> dict:
     theme = dict(THEMES.get(key) or THEMES[DEFAULT_THEME])
@@ -53,4 +57,6 @@ def get_theme(key: str) -> dict:
     theme["brasslight"] = MONEY_POSITIVE_LIGHT
     theme["rust"] = MONEY_NEGATIVE
     theme["rustlight"] = MONEY_NEGATIVE_LIGHT
+    theme["expiredpurple"] = STATUS_EXPIRED
+    theme["expiredpurplelight"] = STATUS_EXPIRED_LIGHT
     return theme
