@@ -14,7 +14,7 @@ from . import control_models
 from .auth import hash_password, verify_password, get_current_user
 from .templates_config import render, BASE_DIR
 from . import analytics
-from .settings_helper import sso_login_context, ensure_default_business
+from .settings_helper import sso_login_context, ensure_default_business, set_session_business_for_login
 from .migrations import run_migrations
 
 from .routers import income, expenses, categories, reports, attachments, profile, settings, sso, contacts, uploads, businesses, backup, password_reset, quotes
@@ -78,14 +78,15 @@ def setup_submit(
         display_name=username,
     )
     db.add(user)
-    ensure_default_business(db)
+    biz = ensure_default_business(db)
+    user.last_business_slug = biz.slug
     db.commit()
     db.refresh(user)
 
     request.session["user_id"] = user.id
     request.session["username"] = user.username
     request.session["role"] = user.role
-    request.session["business_slug"] = DEFAULT_BUSINESS_SLUG
+    request.session["business_slug"] = biz.slug
     return RedirectResponse("/", status_code=303)
 
 
@@ -106,6 +107,7 @@ def login_submit(request: Request, username: str = Form(...), password: str = Fo
     request.session["user_id"] = user.id
     request.session["username"] = user.username
     request.session["role"] = user.role
+    set_session_business_for_login(request, db, user)
     return RedirectResponse("/", status_code=303)
 
 

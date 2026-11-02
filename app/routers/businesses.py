@@ -5,7 +5,7 @@ from sqlalchemy.orm import Session
 from ..database import get_control_db, DEFAULT_BUSINESS_SLUG, business_db_path, forget_business_engine
 from .. import control_models
 from ..auth import require_login, require_owner
-from ..settings_helper import unique_slug, accessible_businesses_for_user
+from ..settings_helper import unique_slug, accessible_businesses_for_user, set_active_business
 
 router = APIRouter(tags=["businesses"])
 
@@ -14,7 +14,7 @@ router = APIRouter(tags=["businesses"])
 def switch_business(slug: str, request: Request, db: Session = Depends(get_control_db), user=Depends(require_login)):
     accessible = accessible_businesses_for_user(db, user)
     if any(b.slug == slug for b in accessible):
-        request.session["business_slug"] = slug
+        set_active_business(request, db, user, slug)
     return RedirectResponse("/", status_code=303)
 
 
@@ -30,7 +30,7 @@ def create_business(request: Request, name: str = Form(...), db: Session = Depen
         from ..migrations import _run_per_business_migrations
         engine = get_business_engine(slug)  # creates the new (empty) database file with the current schema
         _run_per_business_migrations(engine)  # seeds default payment methods, etc.
-        request.session["business_slug"] = slug
+        set_active_business(request, db, user, slug)
     return RedirectResponse("/settings", status_code=303)
 
 
@@ -58,6 +58,13 @@ def delete_business(slug: str, request: Request, confirm_name: str = Form(...), 
     forget_business_engine(slug)
     db.query(control_models.UserBusinessAccess).filter(control_models.UserBusinessAccess.business_id == biz.id).delete()
     db.delete(biz)
+
+    # Any user (not just whoever's deleting it) who had this as their
+    # remembered "last used business" must not have it restored for them
+    # on their next login — clear it so they fall back to whatever's left.
+    for u in db.query(control_models.User).filter(control_models.User.last_business_slug == slug).all():
+        u.last_business_slug = None
+
     db.commit()
 
     path = business_db_path(slug)
@@ -69,7 +76,8 @@ def delete_business(slug: str, request: Request, confirm_name: str = Form(...), 
         pass
 
     if request.session.get("business_slug") == slug:
-        remaining = db.query(control_models.Business).first()
-        request.session["business_slug"] = remaining.slug if remaining else DEFAULT_BUSINESS_SLUG
+        remaining = db.query(control_models.Business).order_by(control_models.Business.name).first()
+        new_slug = remaining.slug if remaining else DEFAULT_BUSINESS_SLUG
+        set_active_business(request, db, user, new_slug)
 
     return RedirectResponse("/settings", status_code=303)

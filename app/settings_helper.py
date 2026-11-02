@@ -31,10 +31,13 @@ def sso_login_context(db: Session, error=None):
 
 def ensure_default_business(control_db: Session):
     """Guarantee at least one business is registered — created automatically
-    on first boot (or during the legacy single-business migration)."""
-    biz = control_db.query(control_models.Business).filter(
-        control_models.Business.slug == DEFAULT_BUSINESS_SLUG
-    ).first()
+    on first boot (or during the legacy single-business migration).
+
+    This checks for ANY business existing, not specifically one with the
+    default slug — once the user has their own business(es) set up, this
+    must never recreate a "Simply Bookkeeping" business behind their back
+    just because that particular slug isn't in use any more."""
+    biz = control_db.query(control_models.Business).first()
     if not biz:
         biz = control_models.Business(slug=DEFAULT_BUSINESS_SLUG, name=DEFAULT_BUSINESS_NAME)
         control_db.add(biz)
@@ -97,10 +100,50 @@ def get_active_business(request: Request):
             return None
         biz = db.query(control_models.Business).filter(control_models.Business.slug == slug).first()
         if not biz:
-            biz = ensure_default_business(db)
+            # The remembered slug no longer exists (e.g. it was deleted).
+            # Fall back to any other business that's still around rather than
+            # silently recreating the named default — only create a fresh
+            # default business if there's genuinely none left at all.
+            biz = db.query(control_models.Business).order_by(control_models.Business.name).first()
+            if not biz:
+                biz = ensure_default_business(db)
+            request.session["business_slug"] = biz.slug
         return biz
     finally:
         db.close()
+
+
+def resolve_login_business_slug(db: Session, user) -> str | None:
+    """Which business a user should land on right after logging in — their
+    last-used business if it still exists and they still have access to it,
+    otherwise their first accessible business, or None if they have none."""
+    accessible = accessible_businesses_for_user(db, user)
+    if not accessible:
+        return None
+    if user.last_business_slug:
+        match = next((b for b in accessible if b.slug == user.last_business_slug), None)
+        if match:
+            return match.slug
+    return accessible[0].slug
+
+
+def set_session_business_for_login(request: Request, db: Session, user):
+    """Call right after establishing a logged-in session (password login, SSO,
+    first-run setup) so the session starts pointed at a business that still
+    exists, instead of falling back to the hardcoded default slug."""
+    slug = resolve_login_business_slug(db, user)
+    if slug:
+        request.session["business_slug"] = slug
+    return slug
+
+
+def set_active_business(request: Request, db: Session, user, slug: str):
+    """Switch the session's active business AND remember it against the user,
+    so it's restored automatically next time they log in."""
+    request.session["business_slug"] = slug
+    if user is not None and user.last_business_slug != slug:
+        user.last_business_slug = slug
+        db.commit()
 
 
 def all_businesses(db: Session):

@@ -30,6 +30,7 @@ def run_migrations():
     ensure_column(control_engine, "app_settings", "smtp_from_name", "VARCHAR")
     ensure_column(control_engine, "users", "theme", "VARCHAR")  # per-user theme preference
     ensure_column(control_engine, "users", "ocr_enabled", "BOOLEAN")  # NULL treated as enabled
+    ensure_column(control_engine, "users", "last_business_slug", "VARCHAR")  # restored on next login
 
     with ControlSessionLocal() as cdb:
         ensure_default_business(cdb)

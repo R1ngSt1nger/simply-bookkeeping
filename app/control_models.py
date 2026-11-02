@@ -15,6 +15,7 @@ class User(ControlBase):
     email = Column(String, nullable=True)  # optional — used to match SSO identities
     theme = Column(String, nullable=True)  # each user's own colour theme preference
     ocr_enabled = Column(Boolean, nullable=True)  # NULL/unset is treated as enabled (default on)
+    last_business_slug = Column(String, nullable=True)  # restored as the active business on next login
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
 

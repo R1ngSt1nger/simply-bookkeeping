@@ -8,7 +8,7 @@ from ..database import get_control_db
 from .. import control_models
 from ..auth import hash_password
 from ..templates_config import render
-from ..settings_helper import get_app_settings, sso_login_context
+from ..settings_helper import get_app_settings, sso_login_context, set_session_business_for_login
 from ..oidc import build_oidc_client
 
 router = APIRouter(prefix="/auth/sso", tags=["sso"])
@@ -85,4 +85,5 @@ async def sso_callback(request: Request, db: Session = Depends(get_control_db)):
     request.session["user_id"] = user.id
     request.session["username"] = user.username
     request.session["role"] = user.role
+    set_session_business_for_login(request, db, user)
     return RedirectResponse("/", status_code=303)
